@@ -491,6 +491,25 @@ class UVData(UVBase):
             warnings.warn('antenna_positions are not defined. '
                           'antenna_positions will be a required parameter in '
                           'version 1.5', DeprecationWarning)
+        else:
+            # check that the uvws make sense given the antenna positions
+            # first, make a copy of this object with just the metadata
+            # new_obj = UVData()
+            # for param_name in self:
+            #     if param_name not in ['data_array', 'flag_array', 'nsample_array']:
+            #         setattr(new_obj, param_name, getattr(self, param_name))
+            new_obj = copy.deepcopy(self)
+            new_obj.data_array = None
+            new_obj.flag_array = None
+            new_obj.nsample_array = None
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                new_obj.set_uvws_from_antenna_positions(allow_phasing=True, metadata_only=True)
+
+            if new_obj._uvw_array != self._uvw_array:
+                print(np.max(np.abs(new_obj.uvw_array - self.uvw_array)))
+                raise ValueError('uvw_array does not match the expected values '
+                                 'given the antenna positions.')
 
         # check auto and cross-corrs have sensible uvws
         autos = np.isclose(self.ant_1_array - self.ant_2_array, 0.0)
@@ -988,7 +1007,7 @@ class UVData(UVBase):
         zenith_dec = obs_zenith_coord.dec
 
         self.phase(zenith_ra, zenith_dec, epoch='J2000', phase_frame=phase_frame,
-                   use_ant_pos=use_ant_pos)
+                   use_ant_pos=use_ant_pos, metadata_only=metadata_only)
 
     def set_uvws_from_antenna_positions(self, allow_phasing=False,
                                         orig_phase_frame=None,
@@ -1036,7 +1055,8 @@ class UVData(UVBase):
                 phase_center_ra = self.phase_center_ra
                 phase_center_dec = self.phase_center_dec
                 phase_center_epoch = self.phase_center_epoch
-                self.unphase_to_drift(phase_frame=orig_phase_frame)
+                self.unphase_to_drift(phase_frame=orig_phase_frame,
+                                      metadata_only=metadata_only)
             else:
                 raise ValueError('UVW calculation requires unphased data. '
                                  'Use unphase_to_drift or set '
@@ -1057,7 +1077,7 @@ class UVData(UVBase):
         self.uvw_array = uvw_array
         if phase_type == 'phased':
             self.phase(phase_center_ra, phase_center_dec, phase_center_epoch,
-                       phase_frame=output_phase_frame)
+                       phase_frame=output_phase_frame, metadata_only=metadata_only)
 
     def conjugate_bls(self, convention='ant1<ant2', use_enu=True, uvw_tol=0.0):
         """
