@@ -385,7 +385,8 @@ class LocationParameter(UVParameter):
 class UnitParameter(UVParameter):
     """SubClass of UVParameters with astropy quantity compatibility.
 
-    Adds checks for Astropy Quantity objects and equality between Quantites."""
+    Adds checks for Astropy Quantity objects and equality between Quantites.
+    """
 
     def __init__(self, name, required=True, value=None, spoof_val=None,
                  form=(), description='', expected_type=int,
@@ -478,3 +479,32 @@ class UnitParameter(UVParameter):
                                                 "expected units of {1}"
                                                 .format(self.value.unit,
                                                         self.expected_units))
+
+    def __eq__(self, other):
+        """Classes must match with identical values for equality."""
+        if isinstance(other, self.__class__):
+            # Run checks on input objects to ensure they are well formed.
+            # Objects which do not adhere to the proper form should not be compared
+            self.check()
+            other.check()
+            # If values are different types of object self and other are not equal.
+            if not isinstance(self.value, other.value.__class__):
+                print('{name} parameter value classes are different. Left is '
+                      '{lclass}, right is {rclass}'.format(name=self.name,
+                                                           lclass=self.value.__class__,
+                                                           rclass=other.value.__class__))
+                return False
+            if isinstance(self.value, units.Quantity):
+                if self.value.shape != other.value.shape:
+                    print('{name} parameter value is array, shapes are '
+                          'different'.format(name=self.name))
+                    return False
+                elif not self.value.unit.is_equivalent(other.value.unit):
+                    print('{name} parameter is Quantity, but have '
+                          'non-compatible units '.format(name=self.name))
+                    return False
+        return True
+
+    def __neq__(self, other):
+        """Not Equal."""
+        return not self.__eq__(other)
