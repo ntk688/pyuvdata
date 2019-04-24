@@ -16,6 +16,8 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import six
 
+import astropy.units as units
+
 from . import utils
 
 
@@ -378,3 +380,101 @@ class LocationParameter(UVParameter):
                 message = ('Value {val}, is not in allowed range: '
                            '{acceptable_range}'.format(val=testval, acceptable_range=self.acceptable_range))
                 return False, message
+
+
+class UnitParameter(UVParameter):
+    """SubClass of UVParameters with astropy quantity compatibility.
+
+    Adds checks for Astropy Quantity objects and equality between Quantites."""
+
+    def __init__(self, name, required=True, value=None, spoof_val=None,
+                 form=(), description='', expected_type=int,
+                 acceptable_vals=None, acceptable_range=None,
+                 expected_units=None,
+                 tols=(1e-05, 1e-08), value_not_quantity=False):
+        """Initialize the UnitParameter.
+
+        This object relies on all arguments and keywords from the UVParamter Class.
+        The following is a list of additional keywords:
+        Extra keywords:
+            value_not_quantity: (Boolean, default False)
+                                Boolean flag used to specify that input value
+                                is not an astropy Quantity object, but a
+                                UnitParameter is desired over a UVParameter.
+        """
+        # First check that the value is either a Quantity, None, or not a Quantity but `value_not_quantity` is True
+        if not (value is None
+                or value_not_quantity
+                or isinstance(value, units.Quantity)):
+            raise ValueError("Input value array is not an astropy Quantity"
+                             " object and the user did not specify "
+                             "value_not_quantity flag.")
+
+        # Must check if tolerance is given as a quantity first.
+        # There are a few cases of possible input tolerances:
+        #  - User gives a single value as a quantity.
+        #     -- This _must_ bet the absolute error.
+        #  - User gives a tuple with neither entry being a quantity
+        #     -- This is assumed to be a tuple of (relative, aboslute) errors and the unit from the quantity input is applied to the absolute error
+        #  - User provides a tuple (relative, absolute) where the absolute error is a quantity with appropriate units
+        #     -- This is the prefered and least ambiguous option.
+        #  - User provides a tuple of Quantity objects (relative, absolute)
+        #     -- This is non-physical relative error should be unitless
+        # These cases must be checked prior to the super().__init__ call to accomodate for the units
+        if not value_not_quantity:
+            if isinstance(tols, units.Quantity):
+                if tols.size > 1:
+                    raise ValueError("Tolerance values that are Quantity "
+                                     "objects must be a single value to "
+                                     "represent the absolute tolerance.")
+                else:
+                    # Only one tolerance given, assume absolute, set relative to zero
+                    tols = tuple((0, tols))
+
+            if len(utils._get_iterable(tols)) == 1:
+                # Only one tolerance given, assume absolute, set relative to zero
+                tols = tuple((0, tols))
+
+            if not isinstance(tols[1], units.Quantity):
+                print("Given absolute tolerance did not all have units. "
+                      "Applying expected units from parameter.")
+                tols = tuple((tols[0], tols[1] * expected_units))
+
+            if not tols[1].unit.is_equivalent(expected_units):
+                raise units.UnitConversionError("Given absolute tolerance "
+                                                "did not all have units "
+                                                "compatible with expected_units.")
+            tols = tuple((tols[0], tols[1].to(expected_units).value))
+
+        super(UnitParameter, self).__init__(name=name, required=required,
+                                            value=value,
+                                            spoof_val=spoof_val, form=form,
+                                            description=description,
+                                            expected_type=expected_type,
+                                            acceptable_vals=acceptable_vals,
+                                            acceptable_range=acceptable_range,
+                                            tols=tols)
+        self.value_not_quantity = value_not_quantity
+        self.expected_units = expected_units
+        # For Quantity objects there is some more set-up and checking to do.
+        if not self.value_not_quantity:
+            # now re-wrap the tolerances with all the necessary information
+            self.tols = tuple((self.tols[0], self.tols[1] * self.expected_units))
+            if isinstance(self.value, list) and isinstance(self.value[0], units.Quantity):
+                try:
+                    self.value = units.Quantity(self.value)
+                except units.UnitConversionError:
+                    raise ValueError("Unable to create UnitParameter objects "
+                                     "from lists whose elements have "
+                                     "non-comaptible units.")
+            if self.expected_units is None:
+                raise ValueError("Input Quantity must also be accompained "
+                                 "by the expected unit or equivalent unit. "
+                                 "Please set parameter expected_units to "
+                                 "an instance of an astropy Units object.")
+            if not self.value.unit.is_equivalent(self.expected_units):
+                raise units.UnitConversionError("Input value has units {0} "
+                                                "which are not equivalent to "
+                                                "expected units of {1}"
+                                                .format(self.value.unit,
+                                                        self.expected_units))
