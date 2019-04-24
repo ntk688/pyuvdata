@@ -15,7 +15,6 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import six
-
 import astropy.units as units
 
 from . import utils
@@ -383,7 +382,7 @@ class LocationParameter(UVParameter):
 
 
 class UnitParameter(UVParameter):
-    """SubClass of UVParameters with astropy quantity compatibility.
+    """Subclass of UVParameters with astropy Quantity compatibility.
 
     Adds checks for Astropy Quantity objects and equality between Quantites.
     """
@@ -396,18 +395,18 @@ class UnitParameter(UVParameter):
         """Initialize the UnitParameter.
 
         This object relies on all arguments and keywords from the UVParamter Class.
+
         The following is a list of additional keywords:
         Extra keywords:
             value_not_quantity: (Boolean, default False)
                                 Boolean flag used to specify that input value
                                 is not an astropy Quantity object, but a
                                 UnitParameter is desired over a UVParameter.
+
         """
-        # First check that the value is either a Quantity, None, or not a Quantity but `value_not_quantity` is True
-        if not (value is None
-                or value_not_quantity
-                or isinstance(value, units.Quantity)):
-            raise ValueError("Input value array is not an astropy Quantity"
+        # First check that the value is exepcted to be a Quantity and if not `value_not_quantity` is True
+        if not (value_not_quantity or isinstance(expected_units, units.UnitBase)):
+            raise ValueError("Input expected_units are not an astropy.Unit"
                              " object and the user did not specify "
                              "value_not_quantity flag.")
 
@@ -468,11 +467,6 @@ class UnitParameter(UVParameter):
                     raise ValueError("Unable to create UnitParameter objects "
                                      "from lists whose elements have "
                                      "non-comaptible units.")
-            if self.expected_units is None:
-                raise ValueError("Input Quantity must also be accompained "
-                                 "by the expected unit or equivalent unit. "
-                                 "Please set parameter expected_units to "
-                                 "an instance of an astropy Units object.")
             if not self.value.unit.is_equivalent(self.expected_units):
                 raise units.UnitConversionError("Input value has units {0} "
                                                 "which are not equivalent to "
@@ -482,11 +476,14 @@ class UnitParameter(UVParameter):
 
     def __eq__(self, other):
         """Classes must match with identical values for equality."""
-        if isinstance(other, self.__class__):
-            # Run checks on input objects to ensure they are well formed.
-            # Objects which do not adhere to the proper form should not be compared
-            self.check()
-            other.check()
+        if not isinstance(other, self.__class__):
+            print('{name} parameter value classes are different and one '
+                  'is not a subclass of the other. Left is '
+                  '{lclass}, right is {rclass}'.format(name=self.name,
+                                                       lclass=self.__class__,
+                                                       rclass=other.__class__))
+            return False
+        else:
             # If values are different types of object self and other are not equal.
             if not isinstance(self.value, other.value.__class__):
                 print('{name} parameter value classes are different. Left is '
@@ -494,7 +491,10 @@ class UnitParameter(UVParameter):
                                                            lclass=self.value.__class__,
                                                            rclass=other.value.__class__))
                 return False
-            if isinstance(self.value, units.Quantity):
+            if self.value_not_quantity:
+                # If value is not a quantity then use the UVParameter __eq__
+                return super(UnitParameter, self).__eq__(other)
+            else:
                 if self.value.shape != other.value.shape:
                     print('{name} parameter value is array, shapes are '
                           'different'.format(name=self.name))
@@ -503,8 +503,30 @@ class UnitParameter(UVParameter):
                     print('{name} parameter is Quantity, but have '
                           'non-compatible units '.format(name=self.name))
                     return False
-        return True
+                # astropy.units has a units.allclose but only for python 3
+                # already know the units are compatible so
+                # Convert other to self's units and compare values
+                if not np.allclose(self.value.to(self.expected_units).value,
+                                   other.value.to(self.expected_units).value,
+                                   rtol=self.tols[0],
+                                   atol=self.tols[1].to(self.expected_units).value):
+                    print('{name} parameter value is array, values are not '
+                          'close'.format(name=self.name))
+                    return False
+                else:
+                    return True
 
-    def __neq__(self, other):
+    def __ne__(self, other):
         """Not Equal."""
         return not self.__eq__(other)
+
+    def check_acceptability(self):
+        """Added compatibility tests for units on top of base compatibility."""
+        if not self.value.unit.is_equivalent(self.expected_units):
+            message = ("Input value has units {0} "
+                       "which are not equivalent to "
+                       "expected units of {1}"
+                       .format(self.value.unit, self.expected_units))
+            return False, message
+        else:
+            return super(UnitParameter, self).check_acceptability()
