@@ -326,3 +326,12 @@ def test_incompatible_units_fails_check_acceptability():
 
     param1.value = 5 * units.s
     nt.assert_false(param1.check_acceptability()[0])
+
+
+def test_compatible_unit_changed_to_expected_unit():
+    """Test that UnitParameters are changed to expected units in init."""
+    param1 = uvp.UnitParameter(name='p1', value=5 * units.km,
+                               tols=(0, 3 * units.m),
+                               expected_units=units.m)
+    nt.assert_true(param1.check_acceptability()[0])
+    nt.assert_equal(param1.value, 5000 * units.m)

@@ -473,6 +473,9 @@ class UnitParameter(UVParameter):
                                                 "expected units of {1}"
                                                 .format(self.value.unit,
                                                         self.expected_units))
+            else:
+                # store in the expected unit
+                self.value = self.value.to(self.expected_units)
 
     def __eq__(self, other):
         """Classes must match with identical values for equality."""
