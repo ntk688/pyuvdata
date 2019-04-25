@@ -369,7 +369,7 @@ def test_redundancy_finder():
 
     tol = 0.05  # meters
 
-    bl_positions = uvd.uvw_array
+    bl_positions = uvd.uvw_array.value
 
     nt.assert_raises(ValueError, uvutils.get_baseline_redundancies, uvd.baseline_array, bl_positions[0:2, 0:1])
     baseline_groups, vec_bin_centers, lens = uvutils.get_baseline_redundancies(uvd.baseline_array, bl_positions, tol=tol)
@@ -389,7 +389,7 @@ def test_redundancy_finder():
     shift_angs = np.random.uniform(low=0.0, high=2 * np.pi, size=Nbls)
     shift_vecs = np.stack((shift_dists * np.cos(shift_angs), shift_dists * np.sin(shift_angs), np.zeros(Nbls))).T
 
-    bl_positions_new = uvd.uvw_array + shift_vecs
+    bl_positions_new = uvd.uvw_array.value + shift_vecs
 
     baseline_groups_new, vec_bin_centers, lens = uvutils.get_baseline_redundancies(uvd.baseline_array, bl_positions_new, tol=tol)
 
@@ -478,7 +478,7 @@ def test_redundancy_finder_fully_redundant_array():
     uvd.select(times=uvd.time_array[0])
 
     tol = 1  # meters
-    bl_positions = uvd.uvw_array
+    bl_positions = uvd.uvw_array.value
 
     baseline_groups, vec_bin_centers, lens, conjugates = uvutils.get_baseline_redundancies(uvd.baseline_array, bl_positions, tol=tol, with_conjugates=True)
 

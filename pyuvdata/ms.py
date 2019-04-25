@@ -12,14 +12,14 @@ import numpy as np
 import os
 import re
 import warnings
-from astropy import constants as const
+from astropy import units, constants as const
 import astropy.time as time
 
 from . import UVData
 from . import parameter as uvp
 from . import telescopes
 from . import utils as uvutils
-
+from . import parameter as uvp
 try:
     import casacore.tables as tables
 except ImportError:  # pragma: no cover
@@ -190,7 +190,7 @@ class MS(UVData):
         # CASA's convention is unclear: the docs contradict themselves,
         # but empirically it appears to match uvfits
         # So conjugate the visibilities and flip the uvws:
-        self.uvw_array = -1 * tb.getcol('UVW')
+        self.uvw_array = -1 * tb.getcol('UVW') * units.m
         self.ant_1_array = tb.getcol('ANTENNA1').astype(np.int32)
         self.ant_2_array = tb.getcol('ANTENNA2').astype(np.int32)
         self.Nants_data = len(np.unique(np.concatenate(
@@ -327,5 +327,10 @@ class MS(UVData):
         tb.close()
         # order polarizations
         self.reorder_pols(order=pol_order)
+        for p in self:
+            myparm = getattr(self, p)
+            if isinstance(myparm, uvp.UnitParameter):
+                myparm.value *= myparm.expected_units
+                setattr(self, p, myparm)
         if run_check:
             self.check(check_extra=check_extra, run_check_acceptability=run_check_acceptability)

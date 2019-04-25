@@ -14,7 +14,7 @@ import six
 
 from . import UVData
 from . import utils as uvutils
-
+from . import parameter as uvp
 try:
     import h5py
 except ImportError:  # pragma: no cover
@@ -277,6 +277,11 @@ class UVH5(UVData):
         self.Nblts = int(header['Nblts'][()])
         self.Nspws = int(header['Nspws'][()])
 
+        for p in self:
+            myparm = getattr(self, p)
+            if isinstance(myparm, uvp.UnitParameter):
+                myparm.value *= myparm.expected_units
+                setattr(self, p, myparm)
         # get extra_keywords
         if "extra_keywords" in header:
             self.extra_keywords = {}
@@ -526,7 +531,7 @@ class UVH5(UVData):
         header['Nspws'] = self.Nspws
         header['Ntimes'] = self.Ntimes
         header['antenna_numbers'] = self.antenna_numbers
-        header['uvw_array'] = self.uvw_array
+        header['uvw_array'] = self.uvw_array.value
         header['vis_units'] = np.string_(self.vis_units)
         header['channel_width'] = self.channel_width
         header['time_array'] = self.time_array

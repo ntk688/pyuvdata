@@ -14,6 +14,7 @@ import copy
 import six
 from astropy.time import Time
 from astropy.coordinates import Angle
+from astropy import units
 
 from pyuvdata import UVData, UVCal
 import pyuvdata.utils as uvutils
@@ -195,12 +196,12 @@ class TestUVDataBasicMethods(object):
         cross_inds = np.where(~autos)[0]
 
         # make auto have non-zero uvw coords, assert ValueError
-        uvd.uvw_array[auto_inds[0], 0] = 0.1
+        uvd.uvw_array[auto_inds[0], 0] = 0.1 * units.m
         nt.assert_raises(ValueError, uvd.check)
 
         # make cross have |uvw| zero, assert ValueError
         uvd.read_miriad(os.path.join(DATA_PATH, "zen.2457698.40355.xx.HH.uvcA"))
-        uvd.uvw_array[cross_inds[0]][:] = 0.0
+        uvd.uvw_array[cross_inds[0]][:] = 0.0 * units.m
         nt.assert_raises(ValueError, uvd.check)
 
     def test_nants_data_telescope(self):
@@ -360,7 +361,7 @@ def test_phase_unphaseHERA():
         for bl_ind in inds:
             ant1_index = np.where(UV_raw.antenna_numbers == UV_raw.ant_1_array[bl_ind])[0][0]
             ant2_index = np.where(UV_raw.antenna_numbers == UV_raw.ant_2_array[bl_ind])[0][0]
-            uvw_calc[bl_ind, :] = antenna_enu[ant2_index, :] - antenna_enu[ant1_index, :]
+            uvw_calc[bl_ind, :] = (antenna_enu[ant2_index, :] - antenna_enu[ant1_index, :]) * units.m
 
     UV_raw_new = copy.deepcopy(UV_raw)
     UV_raw_new.uvw_array = uvw_calc
@@ -369,7 +370,8 @@ def test_phase_unphaseHERA():
     UV_phase2.phase(0., 0., epoch="J2000")
 
     # The uvw's only agree to ~1mm. should they be better?
-    nt.assert_true(np.allclose(UV_phase2.uvw_array, UV_phase.uvw_array, atol=1e-3))
+    nt.assert_true(np.allclose(UV_phase2.uvw_array.to(units.m).value,
+                               UV_phase.uvw_array.to(units.m).value, atol=1e-3))
     # the data array are just multiplied by the w's for phasing, so a difference
     # at the 1e-3 level makes the data array different at that level too.
     # -> change the tolerance on data_array for this test
@@ -389,7 +391,8 @@ def test_phase_unphaseHERA():
                                         phase_frame='gcrs')
 
     # it's unclear to me how close this should be...
-    nt.assert_true(np.allclose(UV_phase_simple_small.uvw_array, UV_raw_small.uvw_array, atol=1e-2))
+    nt.assert_true(np.allclose(UV_phase_simple_small.uvw_array.to(units.m).value,
+                               UV_raw_small.uvw_array.to(units.m).value, atol=1e-2))
 
     # check error if not passing a Time object to phase_to_time
     nt.assert_raises(TypeError, UV_raw.phase_to_time, UV_raw.time_array[0])
@@ -440,8 +443,10 @@ def test_phasing():
 
     # the tolerances here are empirical -- based on what was seen in the external
     # phasing test. See the phasing memo in docs/references for details
-    nt.assert_true(np.allclose(uvd1_drift.uvw_array, uvd2_drift.uvw_array, atol=2e-2))
-    nt.assert_true(np.allclose(uvd1_drift_antpos.uvw_array, uvd2_drift_antpos.uvw_array))
+    nt.assert_true(np.allclose(uvd1_drift.uvw_array.to(units.m).value,
+                               uvd2_drift.uvw_array.to(units.m).value, atol=2e-2))
+    nt.assert_true(np.allclose(uvd1_drift_antpos.uvw_array.to(units.m).value,
+                               uvd2_drift_antpos.uvw_array.to(units.m).value))
 
     uvd2_rephase = copy.deepcopy(uvd2_drift)
     uvd2_rephase.phase(uvd1.phase_center_ra,
@@ -457,8 +462,10 @@ def test_phasing():
 
     # the tolerances here are empirical -- based on what was seen in the external
     # phasing test. See the phasing memo in docs/references for details
-    nt.assert_true(np.allclose(uvd1.uvw_array, uvd2_rephase.uvw_array, atol=2e-2))
-    nt.assert_true(np.allclose(uvd1.uvw_array, uvd2_rephase_antpos.uvw_array, atol=5e-3))
+    nt.assert_true(np.allclose(uvd1.uvw_array.to(units.m).value,
+                               uvd2_rephase.uvw_array.to(units.m).value, atol=2e-2))
+    nt.assert_true(np.allclose(uvd1.uvw_array.to(units.m).value,
+                               uvd2_rephase_antpos.uvw_array.to(units.m).value, atol=5e-3))
 
     # rephase the drift objects to the original pointing and verify that they match
     uvd1_drift.phase(uvd1.phase_center_ra, uvd1.phase_center_dec,
@@ -470,8 +477,10 @@ def test_phasing():
     # the tolerances here are empirical -- caused by one unphase/phase cycle.
     # the antpos-based phasing differences are based on what was seen in the external
     # phasing test. See the phasing memo in docs/references for details
-    nt.assert_true(np.allclose(uvd1.uvw_array, uvd1_drift.uvw_array, atol=1e-4))
-    nt.assert_true(np.allclose(uvd1.uvw_array, uvd1_drift_antpos.uvw_array, atol=5e-3))
+    nt.assert_true(np.allclose(uvd1.uvw_array.to(units.m).value,
+                               uvd1_drift.uvw_array.to(units.m).value, atol=1e-4))
+    nt.assert_true(np.allclose(uvd1.uvw_array.to(units.m).value,
+                               uvd1_drift_antpos.uvw_array.to(units.m).value, atol=5e-3))
 
     uvd2_drift.phase(uvd2.phase_center_ra, uvd2.phase_center_dec,
                      uvd2.phase_center_epoch, phase_frame='gcrs')
@@ -482,8 +491,10 @@ def test_phasing():
     # the tolerances here are empirical -- caused by one unphase/phase cycle.
     # the antpos-based phasing differences are based on what was seen in the external
     # phasing test. See the phasing memo in docs/references for details
-    nt.assert_true(np.allclose(uvd2.uvw_array, uvd2_drift.uvw_array, atol=1e-4))
-    nt.assert_true(np.allclose(uvd2.uvw_array, uvd2_drift_antpos.uvw_array, atol=2e-2))
+    nt.assert_true(np.allclose(uvd2.uvw_array.to(units.m).value,
+                               uvd2_drift.uvw_array.to(units.m).value, atol=1e-4))
+    nt.assert_true(np.allclose(uvd2.uvw_array.to(units.m).value,
+                               uvd2_drift_antpos.uvw_array.to(units.m).value, atol=2e-2))
 
 
 def test_set_phase_unknown():
@@ -2997,7 +3008,7 @@ def test_set_uvws_from_antenna_pos():
     testfile = os.path.join(
         DATA_PATH, '1133866760.uvfits')
     uv_object.read_uvfits(testfile)
-    orig_uvw_array = np.copy(uv_object.uvw_array)
+    orig_uvw_array = np.copy(uv_object.uvw_array) * uv_object._uvw_array.expected_units
     nt.assert_raises(ValueError, uv_object.set_uvws_from_antenna_positions)
     uvtest.checkWarnings(
         nt.assert_raises,
@@ -3016,7 +3027,7 @@ def test_set_uvws_from_antenna_pos():
     )
     max_diff = np.amax(np.absolute(np.subtract(orig_uvw_array,
                                                uv_object.uvw_array)))
-    nt.assert_almost_equal(max_diff, 0., 2)
+    nt.assert_almost_equal(max_diff.value, 0., 2)
 
 
 def test_redundancy_contract_expand():
@@ -3136,7 +3147,7 @@ def test_quick_redundant_vs_redundant_test_array():
     unique_bls, baseline_inds = np.unique(uv.baseline_array, return_index=True)
     uvw_vectors = np.take(uv.uvw_array, baseline_inds, axis=0)
     uvw_diffs = np.expand_dims(uvw_vectors, axis=0) - np.expand_dims(uvw_vectors, axis=1)
-    uvw_diffs = np.linalg.norm(uvw_diffs, axis=2)
+    uvw_diffs = np.linalg.norm(uvw_diffs.value, axis=2)
 
     reds = np.where(uvw_diffs < tol, unique_bls, 0)
     reds = np.ma.masked_where(reds == 0, reds)

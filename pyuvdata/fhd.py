@@ -11,11 +11,12 @@ from itertools import islice
 import numpy as np
 import warnings
 from scipy.io.idl import readsav
-from astropy import constants as const
+from astropy import units, constants as const
 
 from . import UVData
 from . import utils as uvutils
 from . import telescopes as uvtel
+from . import parameter as uvp
 
 
 def get_fhd_history(settings_file, return_user=False):
@@ -455,6 +456,12 @@ class FHD(UVData):
 
         # need to make sure telescope location is defined properly before this call
         self.set_lsts_from_time_array()
+
+        for p in self:
+            myparm = getattr(self, p)
+            if isinstance(myparm, uvp.UnitParameter):
+                myparm.value *= myparm.expected_units
+                setattr(self, p, myparm)
 
         # check if object has all required uv_properties set
         if run_check:

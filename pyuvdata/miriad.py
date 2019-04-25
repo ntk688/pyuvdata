@@ -14,13 +14,13 @@ import copy
 import itertools
 import six
 import warnings
-from astropy import constants as const
+from astropy import units, constants as const
 from astropy.coordinates import Angle, SkyCoord
 
 from . import UVData
 from . import telescopes as uvtel
 from . import utils as uvutils
-
+from . import parameter as uvp
 from . import aipy_extracts
 
 
@@ -513,7 +513,11 @@ class Miriad(UVData):
             self.set_telescope_params()
         except ValueError as ve:
             warnings.warn(str(ve))
-
+        for p in self:
+            myparm = getattr(self, p)
+            if isinstance(myparm, uvp.UnitParameter):
+                myparm.value *= myparm.expected_units
+                setattr(self, p, myparm)
         # check if object has all required uv_properties set
         if run_check:
             self.check(check_extra=check_extra,
@@ -768,7 +772,7 @@ class Miriad(UVData):
         # write data
         c_ns = const.c.to('m/ns').value
         for viscnt, blt in enumerate(self.data_array):
-            uvw = (self.uvw_array[viscnt] / c_ns).astype(np.double)
+            uvw = (self.uvw_array[viscnt].value / c_ns).astype(np.double)
             t = miriad_time_array[viscnt]
             i = self.ant_1_array[viscnt]
             j = self.ant_2_array[viscnt]

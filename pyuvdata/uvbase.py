@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import warnings
+from astropy import units
 
 from . import parameter as uvp
 from . import version as uvversion
@@ -264,10 +265,25 @@ class UVBase(object):
                                                             eshape=eshape))
                     if eshape == ():
                         # Single element
-                        if not isinstance(param.value, param.expected_type):
-                            raise ValueError('UVParameter ' + p + ' is not the appropriate'
-                                             ' type. Is: ' + str(type(param.value))
-                                             + '. Should be: ' + str(param.expected_type))
+                        if isinstance(param.value, units.Quantity):
+                            if not param.value.unit.is_equivalent(param.expected_units):
+                                raise units.UnitConversionError("UnitParameter " + p + " "
+                                                                "has units {0} "
+                                                                "which are not equivalent to "
+                                                                "expected units of {1}."
+                                                                .format(param.value.unit,
+                                                                        param.expected_units))
+                            if not isinstance(param.value.value, param.expected_type):
+                                #  Quantities cast all ints to float. This is a bit of a hacky workarounds
+                                if not (isinstance(param.value.value, float) and param.expected_type == int):
+                                    raise ValueError('UnitParameter ' + p + ' is not the appropriate'
+                                                     ' type. Is: ' + str(param.value.dtype)
+                                                     + '. Should be: ' + str(param.expected_type))
+                        else:
+                            if not isinstance(param.value, param.expected_type):
+                                raise ValueError('UVParameter ' + p + ' is not the appropriate'
+                                                 ' type. Is: ' + str(type(param.value))
+                                                 + '. Should be: ' + str(param.expected_type))
                     else:
                         if isinstance(param.value, list):
                             # List needs to be handled differently than array
@@ -279,11 +295,28 @@ class UVBase(object):
                                                      + str(type(param.value[0])) + '. Should'
                                                      ' be: ' + str(param.expected_type))
                         else:
-                            # Array
-                            if not isinstance(param.value.item(0), param.expected_type):
-                                raise ValueError('UVParameter ' + p + ' is not the appropriate'
-                                                 ' type. Is: ' + str(param.value.dtype)
-                                                 + '. Should be: ' + str(param.expected_type))
+                            if isinstance(param.value, units.Quantity):
+                                if not param.value.unit.is_equivalent(param.expected_units):
+                                    raise units.UnitConversionError("UnitParameter " + p + " "
+                                                                    "has units {0} "
+                                                                    "which are not equivalent to "
+                                                                    "expected units of {1}."
+                                                                    .format(param.value.unit,
+                                                                            param.expected_units))
+                                if not isinstance(param.value.value.item(0), param.expected_type):
+                                    raise ValueError('UnitParameter ' + p + ' is not the appropriate'
+                                                     ' type. Is: ' + str(param.value.dtype)
+                                                     + '. Should be: ' + str(param.expected_type))
+                            else:
+                                if not isinstance(param.value.item(0), param.expected_type):
+                                    raise ValueError('UnitParameter ' + p + ' is not the appropriate'
+                                                     ' type. Is: ' + str(param.value.dtype)
+                                                     + '. Should be: ' + str(param.expected_type))
+                            # # Array
+                            # if not isinstance(param.value.item(0), param.expected_type):
+                            #     raise ValueError('UVParameter ' + p + ' is not the appropriate'
+                            #                      ' type. Is: ' + str(param.value.dtype)
+                            #                      + '. Should be: ' + str(param.expected_type))
 
                 if run_check_acceptability:
                     accept, message = param.check_acceptability()

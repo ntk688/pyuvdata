@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 import warnings
-from astropy import constants as const
+from astropy import units, constants as const
 from astropy.time import Time
 from astropy.io import fits
 
@@ -92,8 +92,9 @@ class UVFITS(UVData):
         # So conjugate the visibilities and flip the uvws:
         self.uvw_array = (-1) * (np.array(np.stack((vis_hdu.data.par('UU'),
                                                     vis_hdu.data.par('VV'),
-                                                    vis_hdu.data.par('WW'))))
-                                 * const.c.to('m/s').value).T
+                                                    vis_hdu.data.par('WW'))),
+                                          dtype=np.float64) * units.s
+                                 * const.c.to('m/s')).T
 
         if 'INTTIM' in vis_hdu.data.parnames:
             self.integration_time = np.asarray(vis_hdu.data.par('INTTIM'), dtype=np.float64)
@@ -659,7 +660,7 @@ class UVFITS(UVData):
 
         # FITS uvw direction convention is opposite ours and Miriad's.
         # So conjugate the visibilities and flip the uvws:
-        uvw_array_sec = -1 * self.uvw_array / const.c.to('m/s').value
+        uvw_array_sec = -1 * (self.uvw_array / const.c.to('m/s')).value
         # jd_midnight = np.floor(self.time_array[0] - 0.5) + 0.5
         tzero = np.float32(self.time_array[0])
 

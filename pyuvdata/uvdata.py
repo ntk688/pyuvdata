@@ -109,10 +109,12 @@ class UVData(UVBase):
                 'shape (Nblts, 3), units meters. Convention is: uvw = xyz(ant2) - xyz(ant1).'
                 'Note that this is the Miriad convention but it is different '
                 'from the AIPS/FITS convention (where uvw = xyz(ant1) - xyz(ant2)).')
-        self._uvw_array = uvp.UVParameter('uvw_array', description=desc,
-                                          form=('Nblts', 3),
-                                          expected_type=np.float,
-                                          acceptable_range=(0, 1e8), tols=1e-3)
+        self._uvw_array = uvp.UnitParameter('uvw_array', description=desc,
+                                            form=('Nblts', 3),
+                                            expected_type=np.float,
+                                            expected_units=units.m,
+                                            acceptable_range=(0, 1e8) * units.m,
+                                            tols=1e-3 * units.m)
 
         desc = ('Array of times, center of integration, shape (Nblts), '
                 'units Julian Date')
@@ -412,14 +414,14 @@ class UVData(UVBase):
 
         # check auto and cross-corrs have sensible uvws
         autos = np.isclose(self.ant_1_array - self.ant_2_array, 0.0)
-        if not np.all(np.isclose(self.uvw_array[autos], 0.0,
+        if not np.all(np.isclose(self.uvw_array[autos].value, 0.0,
                                  rtol=self._uvw_array.tols[0],
-                                 atol=self._uvw_array.tols[1])):
+                                 atol=self._uvw_array.tols[1].value)):
             raise ValueError("Some auto-correlations have non-zero "
                              "uvw_array coordinates.")
-        if np.any(np.isclose([np.linalg.norm(uvw) for uvw in self.uvw_array[~autos]], 0.0,
+        if np.any(np.isclose([np.linalg.norm(uvw.value) for uvw in self.uvw_array[~autos]], 0.0,
                              rtol=self._uvw_array.tols[0],
-                             atol=self._uvw_array.tols[1])):
+                             atol=self._uvw_array.tols[1].value)):
             raise ValueError("Some cross-correlations have near-zero "
                              "uvw_array magnitudes.")
 
@@ -584,7 +586,7 @@ class UVData(UVBase):
         self.uvw_array = np.float64(self.uvw_array)
 
         # apply -w phasor
-        w_lambda = (self.uvw_array[:, 2].reshape(self.Nblts, 1)
+        w_lambda = (self.uvw_array[:, 2].reshape(self.Nblts, 1).value
                     / const.c.to('m/s').value * self.freq_array.reshape(1, self.Nfreqs))
         phs = np.exp(-1j * 2 * np.pi * (-1) * w_lambda[:, None, :, None])
         self.data_array *= phs
@@ -610,7 +612,8 @@ class UVData(UVBase):
                 for bl_ind in inds:
                     ant1_index = np.where(self.antenna_numbers == self.ant_1_array[bl_ind])[0][0]
                     ant2_index = np.where(self.antenna_numbers == self.ant_2_array[bl_ind])[0][0]
-                    self.uvw_array[bl_ind, :] = ant_uvw[ant2_index, :] - ant_uvw[ant1_index, :]
+                    self.uvw_array[bl_ind, :] = ((ant_uvw[ant2_index, :] - ant_uvw[ant1_index, :])
+                                                 * self._uvw_array.expected_units)
 
             else:
                 uvws_use = self.uvw_array[inds, :]
@@ -628,17 +631,18 @@ class UVData(UVBase):
 
                 rep_dict = {}
                 rep_dict[rep_keyword] = 'cartesian'
-                frame_uvw_coord = SkyCoord(x=uvw_rel_positions[:, 0] * units.m + frame_telescope_location.x,
-                                           y=uvw_rel_positions[:, 1] * units.m + frame_telescope_location.y,
-                                           z=uvw_rel_positions[:, 2] * units.m + frame_telescope_location.z,
+                frame_uvw_coord = SkyCoord(x=uvw_rel_positions[:, 0] + frame_telescope_location.x,
+                                           y=uvw_rel_positions[:, 1] + frame_telescope_location.y,
+                                           z=uvw_rel_positions[:, 2] + frame_telescope_location.z,
                                            frame=phase_frame, obstime=obs_time,
                                            **rep_dict)
 
                 itrs_uvw_coord = frame_uvw_coord.transform_to('itrs')
 
                 # now convert them to ENU, which is the space uvws are in
-                self.uvw_array[inds, :] = uvutils.ENU_from_ECEF(itrs_uvw_coord.cartesian.get_xyz().value.T,
-                                                                *itrs_lat_lon_alt)
+                self.uvw_array[inds, :] = (uvutils.ENU_from_ECEF(itrs_uvw_coord.cartesian.get_xyz().value.T,
+                                                                 *itrs_lat_lon_alt)
+                                           * self._uvw_array.expected_units)
 
         # remove phase center
         self.phase_center_frame = None
@@ -744,7 +748,7 @@ class UVData(UVBase):
                 frame_ant_coord = itrs_ant_coord.transform_to(phase_frame)
 
                 frame_ant_rel = (frame_ant_coord.cartesian
-                                 - frame_telescope_location.cartesian).get_xyz().T.value
+                                 - frame_telescope_location.cartesian).get_xyz().T
 
                 frame_ant_uvw = uvutils.phase_uvw(frame_phase_center.ra.rad,
                                                   frame_phase_center.dec.rad,
@@ -754,30 +758,31 @@ class UVData(UVBase):
                     ant1_index = np.where(self.antenna_numbers == self.ant_1_array[bl_ind])[0][0]
                     ant2_index = np.where(self.antenna_numbers == self.ant_2_array[bl_ind])[0][0]
                     self.uvw_array[bl_ind, :] = frame_ant_uvw[ant2_index, :] - frame_ant_uvw[ant1_index, :]
+
             else:
                 # Also, uvws should be thought of like ENU, not ECEF (or rotated ECEF)
                 # convert them to ECEF to transform between frames
                 uvws_use = self.uvw_array[inds, :]
 
-                uvw_ecef = uvutils.ECEF_from_ENU(uvws_use, *itrs_lat_lon_alt)
+                uvw_ecef = uvutils.ECEF_from_ENU(uvws_use, *itrs_lat_lon_alt) * self._uvw_array.expected_units
 
-                itrs_uvw_coord = SkyCoord(x=uvw_ecef[:, 0] * units.m,
-                                          y=uvw_ecef[:, 1] * units.m,
-                                          z=uvw_ecef[:, 2] * units.m,
+                itrs_uvw_coord = SkyCoord(x=uvw_ecef[:, 0],
+                                          y=uvw_ecef[:, 1],
+                                          z=uvw_ecef[:, 2],
                                           frame='itrs', obstime=obs_time)
                 frame_uvw_coord = itrs_uvw_coord.transform_to(phase_frame)
 
                 # this takes out the telescope location in the new frame,
                 # so these are vectors again
-                frame_rel_uvw = (frame_uvw_coord.cartesian.get_xyz().value.T
-                                 - frame_telescope_location.cartesian.get_xyz().value)
+                frame_rel_uvw = (frame_uvw_coord.cartesian.get_xyz().T
+                                 - frame_telescope_location.cartesian.get_xyz())
 
                 self.uvw_array[inds, :] = uvutils.phase_uvw(frame_phase_center.ra.rad,
                                                             frame_phase_center.dec.rad,
                                                             frame_rel_uvw)
 
         # calculate data and apply phasor
-        w_lambda = (self.uvw_array[:, 2].reshape(self.Nblts, 1)
+        w_lambda = (self.uvw_array[:, 2].reshape(self.Nblts, 1).value
                     / const.c.to('m/s').value * self.freq_array.reshape(1, self.Nfreqs))
         phs = np.exp(-1j * 2 * np.pi * w_lambda[:, None, :, None])
         self.data_array *= phs
@@ -881,7 +886,7 @@ class UVData(UVBase):
                                   == self.ant_2_array[baseline_inds[0]])[0][0]
             uvw_array[baseline_inds, :] = (antenna_locs_ENU[ant2_index, :]
                                            - antenna_locs_ENU[ant1_index, :])
-        self.uvw_array = uvw_array
+        self.uvw_array = uvw_array * self._uvw_array.expected_units
         if phase_type == 'phased':
             self.phase(phase_center_ra, phase_center_dec, phase_center_epoch,
                        phase_frame=output_phase_frame)
@@ -1082,10 +1087,10 @@ class UVData(UVBase):
                                            atol=this._integration_time.tols[1])
             elif a == "_uvw_array":
                 # only check that overlapping blt indices match
-                params_match = np.allclose(this.uvw_array[this_blts_ind, :],
-                                           other.uvw_array[other_blts_ind, :],
+                params_match = np.allclose(this.uvw_array[this_blts_ind, :].value,
+                                           other.uvw_array[other_blts_ind, :].value,
                                            rtol=this._uvw_array.tols[0],
-                                           atol=this._uvw_array.tols[1])
+                                           atol=this._uvw_array.tols[1].value)
             elif a == "_lst_array":
                 # only check that overlapping blt indices match
                 params_match = np.allclose(this.lst_array[this_blts_ind],
@@ -1109,8 +1114,9 @@ class UVData(UVBase):
             this.nsample_array = np.concatenate([this.nsample_array, zero_pad], axis=0)
             this.flag_array = np.concatenate([this.flag_array,
                                               1 - zero_pad], axis=0).astype(np.bool)
-            this.uvw_array = np.concatenate([this.uvw_array,
-                                             other.uvw_array[bnew_inds, :]], axis=0)[blt_order, :]
+            this.uvw_array = (np.concatenate([this.uvw_array.value,
+                                              other.uvw_array[bnew_inds, :].value], axis=0)[blt_order, :]
+                              * self._uvw_array.expected_units)
             this.time_array = np.concatenate([this.time_array,
                                               other.time_array[bnew_inds]])[blt_order]
             this.integration_time = np.concatenate([this.integration_time,
@@ -1337,8 +1343,9 @@ class UVData(UVBase):
                                               other.ant_2_array])
             this.Nants_data = int(len(np.unique(self.ant_1_array.tolist()
                                                 + self.ant_2_array.tolist())))
-            this.uvw_array = np.concatenate([this.uvw_array,
-                                            other.uvw_array], axis=0)
+            this.uvw_array = (np.concatenate([this.uvw_array.value,
+                                              other.uvw_array.value], axis=0)
+                              * self._uvw_array.expected_units)
             this.time_array = np.concatenate([this.time_array,
                                              other.time_array])
             this.Ntimes = len(np.unique(this.time_array))
