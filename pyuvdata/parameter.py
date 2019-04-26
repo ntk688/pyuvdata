@@ -421,7 +421,7 @@ class UnitParameter(UVParameter):
         #  - User provides a tuple of Quantity objects (relative, absolute)
         #     -- This is non-physical relative error should be unitless
         # These cases must be checked prior to the super().__init__ call to accomodate for the units
-        if not value_not_quantity:
+        if not value_not_quantity and value is not None:
             if isinstance(tols, units.Quantity):
                 if tols.size > 1:
                     raise ValueError("Tolerance values that are Quantity "
@@ -457,7 +457,7 @@ class UnitParameter(UVParameter):
         self.value_not_quantity = value_not_quantity
         self.expected_units = expected_units
         # For Quantity objects there is some more set-up and checking to do.
-        if not self.value_not_quantity:
+        if not self.value_not_quantity and value is not None:
             # now re-wrap the tolerances with all the necessary information
             self.tols = tuple((self.tols[0], self.tols[1] * self.expected_units))
             if isinstance(self.value, list) and isinstance(self.value[0], units.Quantity):
