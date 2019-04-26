@@ -15,6 +15,7 @@ import copy
 from astropy.time import Time
 from astropy.coordinates import Angle
 from astropy.utils import iers
+from astropy import units
 
 # parameters for transforming between xyz & lat/lon/alt
 gps_b = 6356752.31424518
@@ -393,6 +394,8 @@ def get_iterable(x):
 
 def _get_iterable(x):
     """Helper function to ensure iterability."""
+    if isinstance(x, units.Quantity) and x.size == 1:
+        return x.flat
     if isinstance(x, collections.Iterable):
         return x
     else:
@@ -452,7 +455,9 @@ def get_lst_for_time(jd_array, latitude, longitude, altitude):
         an array of lst times corresponding to the jd_array
     """
     lsts = []
-    lst_array = np.zeros_like(jd_array)
+    if not isinstance(jd_array, units.Quantity):
+        jd_array = units.Quantity(jd_array, unit=units.day)
+    lst_array = np.zeros_like(jd_array.value)
     for ind, jd in enumerate(np.unique(jd_array)):
         t = Time(jd, format='jd', location=(Angle(longitude, unit='deg'),
                                             Angle(latitude, unit='deg')))
@@ -465,7 +470,7 @@ def get_lst_for_time(jd_array, latitude, longitude, altitude):
                 t.delta_ut1_utc = delta
 
         lst_array[np.where(np.isclose(
-            jd, jd_array, atol=1e-6, rtol=1e-12))] = t.sidereal_time('apparent').radian
+            jd, jd_array, atol=1e-6 * jd.unit, rtol=1e-12))] = t.sidereal_time('apparent').radian
 
     return lst_array
 

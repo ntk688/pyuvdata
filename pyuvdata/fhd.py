@@ -225,10 +225,10 @@ class FHD(UVData):
             self.nsample_array[:, 0, :, pol_i] = np.abs(vis_weights_data[pol])
 
         # In FHD, uvws are in seconds not meters!
-        self.uvw_array = np.zeros((self.Nblts, 3))
-        self.uvw_array[:, 0] = params['UU'][0] * const.c.to('m/s').value
-        self.uvw_array[:, 1] = params['VV'][0] * const.c.to('m/s').value
-        self.uvw_array[:, 2] = params['WW'][0] * const.c.to('m/s').value
+        self.uvw_array = np.zeros((self.Nblts, 3)) * units.m
+        self.uvw_array[:, 0] = params['UU'][0] * units.s * const.c.to('m/s')
+        self.uvw_array[:, 1] = params['VV'][0] * units.s * const.c.to('m/s')
+        self.uvw_array[:, 2] = params['WW'][0] * units.s * const.c.to('m/s')
 
         # bl_info.JDATE (a vector of length Ntimes) is the only safe date/time
         # to use in FHD files.
@@ -241,15 +241,15 @@ class FHD(UVData):
         bin_offset = bl_info['BIN_OFFSET'][0]
         if self.Ntimes != len(int_times):
             warnings.warn('Ntimes does not match the number of unique times in the data')
-        self.time_array = np.zeros(self.Nblts)
+        self.time_array = np.zeros(self.Nblts) * units.day
         if self.Ntimes == 1:
-            self.time_array.fill(int_times[0])
+            self.time_array.fill(int_times[0] * units.day)
         else:
             for ii in range(0, len(int_times)):
                 if ii < (len(int_times) - 1):
-                    self.time_array[bin_offset[ii]:bin_offset[ii + 1]] = int_times[ii]
+                    self.time_array[bin_offset[ii]:bin_offset[ii + 1]] = int_times[ii] * units.day
                 else:
-                    self.time_array[bin_offset[ii]:] = int_times[ii]
+                    self.time_array[bin_offset[ii]:] = int_times[ii] * units.day
 
         # Note that FHD antenna arrays are 1-indexed so we subtract 1
         # to get 0-indexed arrays
@@ -282,7 +282,7 @@ class FHD(UVData):
         # (e.g. 1.999426... rather than 2)
         time_res = obs['TIME_RES']
         # time_res is constrained to be a scalar currently
-        self.integration_time = (np.ones_like(self.time_array, dtype=np.float64)
+        self.integration_time = (np.ones_like(self.time_array.value, dtype=np.float64)
                                  * time_res[0])
         self.channel_width = float(obs['FREQ_RES'][0])
 
@@ -456,12 +456,6 @@ class FHD(UVData):
 
         # need to make sure telescope location is defined properly before this call
         self.set_lsts_from_time_array()
-
-        for p in self:
-            myparm = getattr(self, p)
-            if isinstance(myparm, uvp.UnitParameter):
-                myparm.value *= myparm.expected_units
-                setattr(self, p, myparm)
 
         # check if object has all required uv_properties set
         if run_check:

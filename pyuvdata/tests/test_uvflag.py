@@ -19,7 +19,7 @@ from pyuvdata import version as uvversion
 import shutil
 import copy
 import six
-
+from astropy import units
 
 test_d_file = os.path.join(DATA_PATH, 'zen.2457698.40355.xx.HH.uvcAA')
 test_c_file = os.path.join(DATA_PATH, 'zen.2457555.42443.HH.uvcA.omni.calfits')
@@ -44,7 +44,7 @@ def test_init_UVData():
     nt.assert_true(np.all(uvf.weights_array == 1))
     nt.assert_true(uvf.type == 'baseline')
     nt.assert_true(uvf.mode == 'metric')
-    nt.assert_true(np.all(uvf.time_array == uv.time_array))
+    nt.assert_true(np.all(uvf.time_array == uv.time_array.value))
     nt.assert_true(np.all(uvf.lst_array == uv.lst_array))
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
@@ -68,7 +68,7 @@ def test_init_UVData_copy_flags():
     nt.assert_true(np.all(uvf.weights_array == 1))
     nt.assert_true(uvf.type == 'baseline')
     nt.assert_true(uvf.mode == 'flag')
-    nt.assert_true(np.all(uvf.time_array == uv.time_array))
+    nt.assert_true(np.all(uvf.time_array == uv.time_array.value))
     nt.assert_true(np.all(uvf.lst_array == uv.lst_array))
     nt.assert_true(np.all(uvf.freq_array == uv.freq_array[0]))
     nt.assert_true(np.all(uvf.polarization_array == uv.polarization_array))
@@ -240,7 +240,7 @@ def test_read_write_nocompress_flag():
 def test_init_list():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uv.time_array -= 1
+    uv.time_array -= 1 * units.day
     uvf = UVFlag([uv, test_f_file])
     uvf1 = UVFlag(uv)
     uvf2 = UVFlag(test_f_file)
@@ -265,7 +265,7 @@ def test_init_list():
 def test_read_list():
     uv = UVData()
     uv.read_miriad(test_d_file)
-    uv.time_array -= 1
+    uv.time_array -= 1 * units.day
     uvf = UVFlag(uv)
     uvf.write(test_outfile, clobber=True)
     uvf.read([test_outfile, test_f_file])

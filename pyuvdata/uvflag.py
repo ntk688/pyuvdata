@@ -5,6 +5,7 @@
 from __future__ import print_function, division, absolute_import
 import numpy as np
 import os
+from astropy import units
 from . import UVData
 from . import UVCal
 from . import utils as uvutils
@@ -91,7 +92,10 @@ class UVFlag(object):
             self.baseline_array = input.baseline_array
             self.ant_1_array = input.ant_1_array
             self.ant_2_array = input.ant_2_array
-            self.time_array = input.time_array
+            if isinstance(input.time_array, units.Quantity):
+                self.time_array = input.time_array.value
+            else:
+                self.time_array = input.time_array
             self.lst_array = input.lst_array
             self.freq_array = input.freq_array
             self.polarization_array = input.polarization_array
@@ -112,7 +116,10 @@ class UVFlag(object):
             self.type = 'antenna'
             self.history += 'Flag object with type "antenna" created by ' + self.pyuvdata_version_str
             self.ant_array = input.ant_array
-            self.time_array = input.time_array
+            if isinstance(input.time_array, units.Quantity):
+                self.time_array = input.time_array.value
+            else:
+                self.time_array = input.time_array
             self.lst_array = lst_from_uv(input)
             self.freq_array = input.freq_array
             self.polarization_array = input.jones_array

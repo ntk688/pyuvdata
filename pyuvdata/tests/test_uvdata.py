@@ -385,6 +385,7 @@ def test_phase_unphaseHERA():
     # check that phasing to zenith with one timestamp has small changes
     # (it won't be identical because of precession/nutation changing the coordinate axes)
     # use gcrs rather than icrs to reduce differences (don't include abberation)
+
     UV_raw_small = UV_raw.select(times=UV_raw.time_array[0], inplace=False)
     UV_phase_simple_small = copy.deepcopy(UV_raw_small)
     UV_phase_simple_small.phase_to_time(time=Time(UV_raw.time_array[0], format='jd'),
@@ -853,7 +854,7 @@ def test_select_times():
 
     # check for errors associated with times not included in data
     nt.assert_raises(ValueError, uv_object.select, times=[
-                     np.min(unique_times) - uv_object.integration_time[0]])
+                     np.min(unique_times).value - uv_object.integration_time[0]])
 
 
 def test_select_frequencies():

@@ -173,9 +173,9 @@ class Miriad(UVData):
             # UVData.time_array marks center of integration, while Miriad 'time' marks beginning
             # assume time_range refers to the center of the integrations,
             # so subtract 1/2 an integration before using with miriad select
-            time_range_use = np.array(time_range) - uv['inttime'] / (24 * 3600.) / 2
+            time_range_use = np.array(time_range) * units.day - (uv['inttime'] * units.s).to('day') / 2
 
-            uv.select('time', time_range_use[0], time_range_use[1], include=True)
+            uv.select('time', time_range_use[0].value, time_range_use[1].value, include=True)
             if n_selects > 0:
                 history_update_string += ', times'
             else:
@@ -301,7 +301,7 @@ class Miriad(UVData):
         else:
             ndig_ant = 1
         # Be excessive in precision because we use the floating point values as dictionary keys later
-        prec_t = - 2 * np.floor(np.log10(self._time_array.tols[-1])).astype(int)
+        prec_t = - 2 * np.floor(np.log10(self._time_array.tols[-1].value)).astype(int)
         ndig_t = (np.ceil(np.log10(times[-1])).astype(int) + prec_t + 2)
         blts = []
         for d in data_accumulator.values():
@@ -349,7 +349,7 @@ class Miriad(UVData):
 
         # UVData.time_array marks center of integration, while Miriad 'time' marks beginning
         # also, int_grid is in units of seconds, so we need to convert to days
-        self.time_array = t_grid + int_grid / (24 * 3600.) / 2
+        self.time_array = (t_grid + int_grid / (24 * 3600.) / 2) * units.day
 
         self.integration_time = np.asarray(int_grid, dtype=np.float64)
 
@@ -374,7 +374,7 @@ class Miriad(UVData):
         self.data_array = np.zeros((self.Nblts, self.Nspws, self.Nfreqs,
                                     self.Npols), dtype=np.complex64)
         self.flag_array = np.ones(self.data_array.shape, dtype=np.bool)
-        self.uvw_array = np.zeros((self.Nblts, 3))
+        self.uvw_array = np.zeros((self.Nblts, 3)) * units.m
         # NOTE: Using our lst calculator, which uses astropy,
         # instead of _miriad values which come from pyephem.
         # The differences are of order 5 seconds.
@@ -390,7 +390,7 @@ class Miriad(UVData):
         # Temporary arrays to hold polarization axis, which will be collapsed
         ra_pol_list = np.zeros((self.Nblts, self.Npols))
         dec_pol_list = np.zeros((self.Nblts, self.Npols))
-        uvw_pol_list = np.zeros((self.Nblts, 3, self.Npols))
+        uvw_pol_list = np.zeros((self.Nblts, 3, self.Npols)) * units.m
         c_ns = const.c.to('m/ns').value
         for pol, data in data_accumulator.items():
             pol_ind = self._pol_to_ind(pol)
@@ -410,7 +410,7 @@ class Miriad(UVData):
                 # axis but avoid any missing visbilities
                 uvw = d[0] * c_ns
                 uvw.shape = (1, 3)
-                uvw_pol_list[blt_index, :, pol_ind] = uvw
+                uvw_pol_list[blt_index, :, pol_ind] = uvw * units.m
                 ra_pol_list[blt_index, pol_ind] = d[7]
                 dec_pol_list[blt_index, pol_ind] = d[8]
 
@@ -428,7 +428,7 @@ class Miriad(UVData):
             elif len(good_pol) > 1:
                 # Multiple good pols, check for consistency. pyuvdata does not
                 # support pol-dependent uvw, ra, or dec.
-                if np.any(np.diff(uvw_pol_list[blt_index, :, good_pol], axis=0)):
+                if np.diff(uvw_pol_list[blt_index, :, good_pol], axis=0).value.any():
                     raise ValueError('uvw values are different by polarization.')
                 else:
                     self.uvw_array[blt_index, :] = uvw_pol_list[blt_index, :, good_pol[0]]
@@ -449,7 +449,7 @@ class Miriad(UVData):
         # get unflagged blts
         blt_good = np.where(~np.all(self.flag_array, axis=(1, 2, 3)))
         single_ra = np.isclose(np.mean(np.diff(ra_list[blt_good])), 0.)
-        single_time = np.isclose(np.mean(np.diff(self.time_array[blt_good])), 0.)
+        single_time = np.isclose(np.mean(np.diff(self.time_array[blt_good])).value, 0.)
 
         # first check to see if the phase_type was specified.
         if phase_type is not None:
@@ -513,11 +513,7 @@ class Miriad(UVData):
             self.set_telescope_params()
         except ValueError as ve:
             warnings.warn(str(ve))
-        for p in self:
-            myparm = getattr(self, p)
-            if isinstance(myparm, uvp.UnitParameter):
-                myparm.value *= myparm.expected_units
-                setattr(self, p, myparm)
+
         # check if object has all required uv_properties set
         if run_check:
             self.check(check_extra=check_extra,
@@ -543,7 +539,7 @@ class Miriad(UVData):
                 Should only be used for testing purposes.
         """
         # change time_array and lst_array to mark beginning of integration, per Miriad format
-        miriad_time_array = self.time_array - self.integration_time / (24 * 3600.) / 2
+        miriad_time_array = self.time_array - (self.integration_time * units.s).to('day') / 2
         if self.telescope_location is not None:
             latitude, longitude, altitude = self.telescope_location_lat_lon_alt_degrees
             miriad_lsts = uvutils.get_lst_for_time(miriad_time_array, latitude, longitude, altitude)
@@ -773,7 +769,7 @@ class Miriad(UVData):
         c_ns = const.c.to('m/ns').value
         for viscnt, blt in enumerate(self.data_array):
             uvw = (self.uvw_array[viscnt].value / c_ns).astype(np.double)
-            t = miriad_time_array[viscnt]
+            t = miriad_time_array[viscnt].value
             i = self.ant_1_array[viscnt]
             j = self.ant_2_array[viscnt]
 

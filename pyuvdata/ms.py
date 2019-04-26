@@ -200,7 +200,7 @@ class MS(UVData):
         self.Nbls = len(np.unique(self.baseline_array))
         # Get times. MS from cotter are modified Julian dates in seconds (thanks to Danny Jacobs for figuring out the proper conversion)
         self.time_array = time.Time(
-            tb.getcol('TIME') / (3600. * 24.), format='mjd').jd
+            tb.getcol('TIME') / (3600. * 24.), format='mjd').jd * units.day
 
         # Polarization array
         tbPol = tables.table(filepath + '/POLARIZATION', ack=False)
@@ -227,11 +227,11 @@ class MS(UVData):
         # self.integration_time=tb.getcol('INTERVAL')[0]
         # for some reason, interval ends up larger than the difference between times...
         if len(times_unique) == 1:
-            self.integration_time = np.ones_like(self.time_array, dtype=np.float64)
+            self.integration_time = np.ones_like(self.time_array.value, dtype=np.float64)
         else:
             # assume that all times in the file are the same size
             int_time = self._calc_single_integration_time()
-            self.integration_time = np.ones_like(self.time_array, dtype=np.float64) * int_time
+            self.integration_time = np.ones_like(self.time_array.value, dtype=np.float64) * int_time
         # open table with antenna location information
         tbAnt = tables.table(filepath + '/ANTENNA', ack=False)
         tbObs = tables.table(filepath + '/OBSERVATION', ack=False)
@@ -327,10 +327,6 @@ class MS(UVData):
         tb.close()
         # order polarizations
         self.reorder_pols(order=pol_order)
-        for p in self:
-            myparm = getattr(self, p)
-            if isinstance(myparm, uvp.UnitParameter):
-                myparm.value *= myparm.expected_units
-                setattr(self, p, myparm)
+
         if run_check:
             self.check(check_extra=check_extra, run_check_acceptability=run_check_acceptability)

@@ -296,13 +296,17 @@ class UVBase(object):
                                                      ' be: ' + str(param.expected_type))
                         else:
                             if isinstance(param.value, units.Quantity):
-                                if not param.value.unit.is_equivalent(param.expected_units):
-                                    raise units.UnitConversionError("UnitParameter " + p + " "
-                                                                    "has units {0} "
-                                                                    "which are not equivalent to "
-                                                                    "expected units of {1}."
-                                                                    .format(param.value.unit,
-                                                                            param.expected_units))
+                                try:
+                                    if not param.value.unit.is_equivalent(param.expected_units):
+                                        raise units.UnitConversionError("UnitParameter " + p + " "
+                                                                        "has units {0} "
+                                                                        "which are not equivalent to "
+                                                                        "expected units of {1}."
+                                                                        .format(param.value.unit,
+                                                                                param.expected_units))
+                                except AttributeError as err:
+                                    print(param.name)
+                                    raise err
                                 if not isinstance(param.value.value.item(0), param.expected_type):
                                     raise ValueError('UnitParameter ' + p + ' is not the appropriate'
                                                      ' type. Is: ' + str(param.value.dtype)
@@ -319,7 +323,10 @@ class UVBase(object):
                             #                      + '. Should be: ' + str(param.expected_type))
 
                 if run_check_acceptability:
-                    accept, message = param.check_acceptability()
+                    try:
+                        accept, message = param.check_acceptability()
+                    except AttributeError:
+                        print(param.name)
                     if not accept:
                         raise ValueError('UVParameter ' + p + ' has unacceptable values. '
                                          + message)

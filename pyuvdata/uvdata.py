@@ -118,10 +118,11 @@ class UVData(UVBase):
 
         desc = ('Array of times, center of integration, shape (Nblts), '
                 'units Julian Date')
-        self._time_array = uvp.UVParameter('time_array', description=desc,
-                                           form=('Nblts',),
-                                           expected_type=np.float,
-                                           tols=1e-3 / (60.0 * 60.0 * 24.0))  # 1 ms in days
+        self._time_array = uvp.UnitParameter('time_array', description=desc,
+                                             form=('Nblts',),
+                                             expected_type=np.float,
+                                             expected_units=units.day,
+                                             tols=1e-3 / (60.0 * 60.0 * 24.0) * units.day)  # 1 ms in days
 
         desc = ('Array of lsts, center of integration, shape (Nblts), '
                 'units radians')
@@ -576,14 +577,16 @@ class UVData(UVBase):
             frame_phase_center = icrs_coord
         else:
             # use center of observation for obstime for gcrs
-            center_time = np.mean([np.max(self.time_array), np.min(self.time_array)])
+            center_time = np.mean(units.Quantity([np.max(self.time_array),
+                                                  np.min(self.time_array)]))
             icrs_coord.obstime = Time(center_time, format='jd')
             frame_phase_center = icrs_coord.transform_to('gcrs')
 
         # This promotion is REQUIRED to get the right answer when we
         # add in the telescope location for ICRS
         # In some cases, the uvws are already float64, but sometimes they're not
-        self.uvw_array = np.float64(self.uvw_array)
+        self.uvw_array = units.Quantity(self.uvw_array, dtype=np.float64,
+                                        copy=False)
 
         # apply -w phasor
         w_lambda = (self.uvw_array[:, 2].reshape(self.Nblts, 1).value
@@ -706,7 +709,8 @@ class UVData(UVBase):
             frame_phase_center = icrs_coord
         else:
             # use center of observation for obstime for gcrs
-            center_time = np.mean([np.max(self.time_array), np.min(self.time_array)])
+            center_time = np.mean(units.Quantity([np.max(self.time_array),
+                                                  np.min(self.time_array)]))
             icrs_coord.obstime = Time(center_time, format='jd')
             frame_phase_center = icrs_coord.transform_to('gcrs')
 
@@ -997,14 +1001,14 @@ class UVData(UVBase):
 
         # Create blt arrays for convenience
         prec_t = - 2 * \
-            np.floor(np.log10(this._time_array.tols[-1])).astype(int)
+            np.floor(np.log10(this._time_array.tols[-1].value)).astype(int)
         prec_b = 8
         this_blts = np.array(["_".join(["{1:.{0}f}".format(prec_t, blt[0]),
                                         str(blt[1]).zfill(prec_b)]) for blt in
-                              zip(this.time_array, this.baseline_array)])
+                              zip(this.time_array.value, this.baseline_array)])
         other_blts = np.array(["_".join(["{1:.{0}f}".format(prec_t, blt[0]),
                                          str(blt[1]).zfill(prec_b)]) for blt in
-                               zip(other.time_array, other.baseline_array)])
+                               zip(other.time_array.value, other.baseline_array)])
         # Check we don't have overlapping data
         both_pol, this_pol_ind, other_pol_ind = np.intersect1d(
             this.polarization_array, other.polarization_array, return_indices=True)
@@ -1117,8 +1121,9 @@ class UVData(UVBase):
             this.uvw_array = (np.concatenate([this.uvw_array.value,
                                               other.uvw_array[bnew_inds, :].value], axis=0)[blt_order, :]
                               * self._uvw_array.expected_units)
-            this.time_array = np.concatenate([this.time_array,
-                                              other.time_array[bnew_inds]])[blt_order]
+            this.time_array = (np.concatenate([this.time_array.value,
+                                              other.time_array[bnew_inds].value])[blt_order]
+                               * this._time_array.expected_units)
             this.integration_time = np.concatenate([this.integration_time,
                                                     other.integration_time[bnew_inds]])[blt_order]
             this.lst_array = np.concatenate(
@@ -1345,9 +1350,9 @@ class UVData(UVBase):
                                                 + self.ant_2_array.tolist())))
             this.uvw_array = (np.concatenate([this.uvw_array.value,
                                               other.uvw_array.value], axis=0)
-                              * self._uvw_array.expected_units)
-            this.time_array = np.concatenate([this.time_array,
-                                             other.time_array])
+                              * this._uvw_array.expected_units)
+            this.time_array = np.concatenate([this.time_array.value,
+                                             other.time_array.value]) * this._time_array.expected_units
             this.Ntimes = len(np.unique(this.time_array))
             this.lst_array = np.concatenate([this.lst_array,
                                             other.lst_array])
@@ -1512,7 +1517,7 @@ class UVData(UVBase):
         if times is not None:
             times = uvutils._get_iterable(times)
             if np.array(times).ndim > 1:
-                times = np.array(times).flatten()
+                times = times.flatten()
             if n_selects > 0:
                 history_update_string += ', times'
             else:
@@ -1525,6 +1530,8 @@ class UVData(UVBase):
                     time_blt_inds = np.append(
                         time_blt_inds, np.where(self.time_array == jd)[0])
                 else:
+                    print(times)
+                    print(self.time_array)
                     raise ValueError(
                         'Time {t} is not present in the time_array'.format(t=jd))
 
@@ -2667,6 +2674,7 @@ class UVData(UVBase):
 
             if select:
                 unique_times = np.unique(self.time_array)
+                time_range = units.Quantity(time_range, unit=units.day)
                 times_to_keep = unique_times[np.where((unique_times >= np.min(time_range))
                                                       & (unique_times <= np.max(time_range)))]
                 self.select(times=times_to_keep, run_check=run_check, check_extra=check_extra,
@@ -2783,6 +2791,7 @@ class UVData(UVBase):
 
             if select:
                 unique_times = np.unique(self.time_array)
+                time_range = units.Quantity(time_range, unit=units.day)
                 times_to_keep = unique_times[np.where((unique_times >= np.min(time_range))
                                                       & (unique_times <= np.max(time_range)))]
                 self.select(times=times_to_keep, run_check=run_check, check_extra=check_extra,
@@ -3477,7 +3486,7 @@ class UVData(UVBase):
             and returns that as the integration time to be used for all samples. Also, the time_array
             is in units of days, and integration_time has units of seconds, so we need to convert.
         """
-        return np.diff(np.sort(list(set(self.time_array))))[0] * 86400
+        return np.diff(np.unique(self.time_array))[0].to('s').value
 
     def get_antenna_redundancies(self, tol=1.0, include_autos=True):
         """

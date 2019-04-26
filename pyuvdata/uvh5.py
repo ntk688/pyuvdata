@@ -11,6 +11,7 @@ import numpy as np
 import os
 import warnings
 import six
+from astropy import units
 
 from . import UVData
 from . import utils as uvutils
@@ -231,17 +232,17 @@ class UVH5(UVData):
         self.Nbls = len(np.unique(self.baseline_array))
 
         # get uvw array
-        self.uvw_array = header['uvw_array'][:, :]
+        self.uvw_array = header['uvw_array'][:, :] * units.m
 
         # get time information
-        self.time_array = header['time_array'][:]
+        self.time_array = header['time_array'][:] * units.day
         integration_time = header['integration_time']
         if integration_time.size == 1 and int(header['Nblts'][()]) > 1:
             warnings.warn('{file} appears to be an old uvh5 format '
                           'with a single valued integration_time which has been deprecated. '
                           'Rewrite this file with write_uvh5 to ensure '
                           'future compatibility.'.format(file=filename))
-            self.integration_time = np.ones_like(self.time_array, dtype=np.float64) * integration_time[()]
+            self.integration_time = np.ones_like(self.time_array.value, dtype=np.float64) * integration_time[()]
         else:
             self.integration_time = integration_time[:]
         if 'lst_array' in header:
@@ -277,11 +278,6 @@ class UVH5(UVData):
         self.Nblts = int(header['Nblts'][()])
         self.Nspws = int(header['Nspws'][()])
 
-        for p in self:
-            myparm = getattr(self, p)
-            if isinstance(myparm, uvp.UnitParameter):
-                myparm.value *= myparm.expected_units
-                setattr(self, p, myparm)
         # get extra_keywords
         if "extra_keywords" in header:
             self.extra_keywords = {}
@@ -534,7 +530,7 @@ class UVH5(UVData):
         header['uvw_array'] = self.uvw_array.value
         header['vis_units'] = np.string_(self.vis_units)
         header['channel_width'] = self.channel_width
-        header['time_array'] = self.time_array
+        header['time_array'] = self.time_array.value
         header['freq_array'] = self.freq_array
         header['integration_time'] = self.integration_time
         header['lst_array'] = self.lst_array

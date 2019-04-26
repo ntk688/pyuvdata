@@ -43,7 +43,7 @@ class UVFITS(UVData):
         # DATE (full day) and _DATE (fractional day)
         # cotter uvfits files have one DATE that is a double
         # using data.par('date') is general -- it will add them together if there are 2
-        self.time_array = vis_hdu.data.par('date')
+        self.time_array = vis_hdu.data.par('date') * units.day
 
         self.Ntimes = len(np.unique(self.time_array))
 
@@ -102,7 +102,7 @@ class UVFITS(UVData):
             if self.Ntimes > 1:
                 # assume that all integration times in the file are the same
                 int_time = self._calc_single_integration_time()
-                self.integration_time = (np.ones_like(self.time_array, dtype=np.float64)
+                self.integration_time = (np.ones_like(self.time_array.value, dtype=np.float64)
                                          * int_time)
             else:
                 raise ValueError('integration time not specified and only '
@@ -662,11 +662,11 @@ class UVFITS(UVData):
         # So conjugate the visibilities and flip the uvws:
         uvw_array_sec = -1 * (self.uvw_array / const.c.to('m/s')).value
         # jd_midnight = np.floor(self.time_array[0] - 0.5) + 0.5
-        tzero = np.float32(self.time_array[0])
+        tzero = units.Quantity(self.time_array[0], dtype=np.float32)
 
         # uvfits convention is that time_array + relevant PZERO = actual JD
         # We are setting PZERO4 = float32(first time of observation)
-        time_array = np.float32(self.time_array - np.float64(tzero))
+        time_array = units.Quantity(self.time_array - units.Quantity(tzero, dtype=np.float64), dtype=np.float32).value
 
         int_time_array = self.integration_time
 
@@ -689,7 +689,7 @@ class UVFITS(UVData):
                       'DATE    ': 1.0, 'BASELINE': 1.0, 'ANTENNA1': 1.0,
                       'ANTENNA2': 1.0, 'SUBARRAY': 1.0, 'INTTIM': 1.0}
         pzero_dict = {'UU      ': 0.0, 'VV      ': 0.0, 'WW      ': 0.0,
-                      'DATE    ': tzero, 'BASELINE': 0.0, 'ANTENNA1': 0.0,
+                      'DATE    ': tzero.value, 'BASELINE': 0.0, 'ANTENNA1': 0.0,
                       'ANTENNA2': 0.0, 'SUBARRAY': 0.0, 'INTTIM': 0.0}
 
         # list contains arrays of [u,v,w,date,baseline];

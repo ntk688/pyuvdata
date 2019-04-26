@@ -16,6 +16,7 @@ import nose.tools as nt
 from astropy.time import Time, TimeDelta
 from astropy import constants as const
 from astropy.utils import iers
+from astropy import units
 
 from pyuvdata import UVData
 from pyuvdata.miriad import Miriad
@@ -388,7 +389,7 @@ def test_singletimeselect_drift():
 
     # get unflagged blts
     blt_good = np.where(~np.all(uv_in.flag_array, axis=(1, 2, 3)))
-    nt.assert_true(np.isclose(np.mean(np.diff(uv_in.time_array[blt_good])), 0.))
+    nt.assert_true(np.isclose(np.mean(np.diff(uv_in.time_array[blt_good])).value, 0.))
 
     uv_in.write_miriad(testfile, clobber=True)
     uv_out.read(testfile)
@@ -642,8 +643,8 @@ def test_readWriteReadMiriad():
 
     # test time loading
     uv_in.read(write_file, time_range=[2456865.607, 2456865.609])
-    full_times = np.unique(full.time_array[(full.time_array > 2456865.607) & (full.time_array < 2456865.609)])
-    nt.assert_true(np.isclose(np.unique(uv_in.time_array), full_times).all())
+    full_times = np.unique(full.time_array[(full.time_array > 2456865.607 * units.day) & (full.time_array < 2456865.609 * units.day)])
+    nt.assert_true(np.isclose(np.unique(uv_in.time_array).value, full_times.value).all())
     exp_uv = full.select(times=full_times, inplace=False)
     nt.assert_equal(uv_in, exp_uv)
 
@@ -704,8 +705,8 @@ def test_readWriteReadMiriad():
     # assert partial-read and select are same
     unique_times = np.unique(full.time_array)
     time_range = [2456865.607, 2456865.609]
-    times_to_keep = unique_times[((unique_times > 2456865.607)
-                                 & (unique_times < 2456865.609))]
+    times_to_keep = unique_times[((unique_times > 2456865.607 * units.day)
+                                 & (unique_times < 2456865.609 * units.day))]
     uv_in.read(write_file, antenna_nums=[0], time_range=time_range)
     exp_uv = full.select(antenna_nums=[0], times=times_to_keep, inplace=False)
     nt.assert_equal(uv_in, exp_uv)
@@ -931,12 +932,12 @@ def test_readMiriadwriteMiriad_check_time_format():
     t1 = Time(uv['time'], format='jd', location=(lon, lat))
     dt = TimeDelta(uv['inttime'] / 2, format='sec')
     t2 = t1 + dt
-    lsts = uvutils.get_lst_for_time(np.array([t1.jd, t2.jd]), lat, lon, alt)
+    lsts = uvutils.get_lst_for_time(units.Quantity([t1.jd, t2.jd], unit=units.day), lat, lon, alt)
     delta_lst = lsts[1] - lsts[0]
     uv_l = uv['lst'] + delta_lst
 
     # assert starting time array and lst array are shifted by half integration
-    nt.assert_almost_equal(uvd_t, uv_t)
+    nt.assert_almost_equal(uvd_t.value, uv_t)
 
     # avoid errors if IERS table is too old (if the iers url is down)
     if iers.conf.auto_max_age is None and six.PY2:
