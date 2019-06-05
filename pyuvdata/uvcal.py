@@ -394,9 +394,10 @@ class UVCal(UVBase):
                times=None, jones=None, run_check=True, check_extra=True,
                run_check_acceptability=True, inplace=True):
         """
-        Select specific antennas, frequencies, times and
-        jones polarization terms to keep in the object while discarding others.
+        Downselect data to keep on the object along various axes.
 
+        Axes that can be selected along include antennas, frequencies, times
+        and jones polarization terms.
         The history attribute on the object will be updated to identify the
         operations performed.
 
