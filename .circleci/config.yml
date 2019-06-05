@@ -23,6 +23,11 @@ jobs:
           command: |
             source activate ${ENV_NAME}
             pycodestyle --ignore=E501,W503
+      - run:
+          name: linting for PEP257 compliance
+          command: |
+            source activate ${ENV_NAME}
+            pydocstyle pyuvdata/uvdata.py
       - save_cache:
           key: deps-{{ .Branch }}-{{ checksum "ci/pyuvdata_linting.yml" }}
           paths:

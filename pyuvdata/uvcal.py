@@ -2,6 +2,8 @@
 # Copyright (c) 2018 Radio Astronomy Software Group
 # Licensed under the 2-clause BSD License
 
+"""Primary container for radio interferometer calibration solutions."""
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -14,16 +16,21 @@ from . import utils as uvutils
 
 
 class UVCal(UVBase):
-    """ A class defining calibration solutions
-
-        Currently supported file types: calfits
-
-        Attributes:
-            UVParameter objects: For full list see UVCal Parameters
-                (http://pyuvdata.readthedocs.io/en/latest/uvcal.html).
-                Some are always required, some are required for certain cal_types
-                and others are always optional.
     """
+    A class defining calibration solutions.
+
+    Currently supported file types: calfits
+
+    Attributes
+    ----------
+    UVParameter objects :
+        For full list see UVCal Parameters
+        (http://pyuvdata.readthedocs.io/en/latest/uvcal.html).
+        Some are always required, some are required for certain cal_types
+        and others are always optional.
+
+    """
+
     def __init__(self):
         radian_tol = 10 * 2 * np.pi * 1e-3 / (60.0 * 60.0 * 360.0)
         self._Nfreqs = uvp.UVParameter('Nfreqs',

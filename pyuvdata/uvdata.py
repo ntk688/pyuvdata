@@ -2,9 +2,8 @@
 # Copyright (c) 2018 Radio Astronomy Software Group
 # Licensed under the 2-clause BSD License
 
-"""Primary container for radio interferometer datasets.
+"""Primary container for radio interferometer datasets."""
 
-"""
 from __future__ import absolute_import, division, print_function
 
 import os
@@ -39,6 +38,7 @@ class UVData(UVBase):
         (http://pyuvdata.readthedocs.io/en/latest/uvdata_parameters.html).
         Some are always required, some are required for certain phase_types
         and others are always optional.
+
     """
 
     def __init__(self):
@@ -385,6 +385,7 @@ class UVData(UVBase):
         ValueError
             if parameter shapes or types are wrong or do not have acceptable
             values (if run_check_acceptability is True)
+
         """
         # first run the basic check from UVBase
         # set the phase type based on object's value
@@ -506,6 +507,7 @@ class UVData(UVBase):
         -------
         list of str
             List of names of known telescopes
+
         """
         return uvtel.known_telescopes()
 
@@ -527,6 +529,7 @@ class UVData(UVBase):
         ------
         ValueError
             if the telescope_name is not in known telescopes
+
         """
         telescope_obj = uvtel.get_telescope(self.telescope_name)
         if telescope_obj is not False:
@@ -582,6 +585,7 @@ class UVData(UVBase):
             first antenna number
         int
             second antenna number
+
         """
         return uvutils.baseline_to_antnums(baseline, self.Nants_telescope)
 
@@ -603,6 +607,7 @@ class UVData(UVBase):
         -------
         int
             baseline number corresponding to the two antenna numbers.
+
         """
         return uvutils.antnums_to_baseline(ant1, ant2, self.Nants_telescope, attempt256=attempt256)
 
@@ -634,6 +639,7 @@ class UVData(UVBase):
         ------
         ValueError
             If the phase_type is not 'phased'
+
         """
         if self.phase_type == 'phased':
             pass
@@ -764,6 +770,7 @@ class UVData(UVBase):
         ------
         ValueError
             If the phase_type is not 'drift'
+
         """
         if self.phase_type == 'drift':
             pass
@@ -903,6 +910,7 @@ class UVData(UVBase):
             If the phase_type is not 'drift'
         TypeError
             If time is not an astropy.time.Time object
+
         """
         if self.phase_type == 'drift':
             pass
@@ -938,7 +946,7 @@ class UVData(UVBase):
                                         orig_phase_frame=None,
                                         output_phase_frame='icrs'):
         """
-        Calculate UVWs based on antenna_positions
+        Calculate UVWs based on antenna_positions.
 
         Parameters
         ----------
@@ -963,6 +971,8 @@ class UVData(UVBase):
         -----
         UserWarning
             If the phase_type is 'phased'
+
+
         """
         phase_type = self.phase_type
         if phase_type == 'phased':
@@ -1024,6 +1034,7 @@ class UVData(UVBase):
         ------
         ValueError
             If convention is not an allowed value or if not all conjugate pols exist.
+
         """
         if isinstance(convention, (np.ndarray, list, tuple)):
             convention = np.array(convention)
@@ -1127,6 +1138,7 @@ class UVData(UVBase):
         ------
         ValueError
             If the order is not one of the allowed values.
+
         """
         if isinstance(order, (np.ndarray, list, tuple)):
             order = np.array(order)
@@ -1176,6 +1188,7 @@ class UVData(UVBase):
         -----
         DeprecationWarning
             Always, because this method will be deprecated in version 1.5
+
         """
         warnings.warn('order_pols method will be deprecated in favor of '
                       'reorder_pols in version 1.5', DeprecationWarning)
@@ -1218,6 +1231,7 @@ class UVData(UVBase):
         ------
         ValueError
             If parameter values are inappropriate
+
         """
         if isinstance(order, (np.ndarray, list, tuple)):
             order = np.array(order)
@@ -1367,6 +1381,7 @@ class UVData(UVBase):
         ValueError
             If other is not a UVData object, self and other are not compatible
             or if data in self and other overlap.
+
         """
         if inplace:
             this = self
@@ -1630,6 +1645,7 @@ class UVData(UVBase):
         ValueError
             If other is not a UVData object, self and other are not compatible
             or if data in self and other overlap.
+
         """
         self.__add__(other, inplace=True)
         return self
@@ -1669,6 +1685,7 @@ class UVData(UVBase):
         ValueError
             If other is not a UVData object, axis is not an allowed value or if
             self and other are not compatible.
+
         """
         if inplace:
             this = self
@@ -1788,8 +1805,7 @@ class UVData(UVBase):
     def _select_preprocess(self, antenna_nums, antenna_names, ant_str, bls,
                            frequencies, freq_chans, times, polarizations, blt_inds):
         """
-        Internal function to build up blt_inds, freq_inds, pol_inds
-        and history_update_string for select.
+        Build up index arrays and history_update_string for select.
 
         Parameters
         ----------
@@ -1847,6 +1863,8 @@ class UVData(UVBase):
             list of polarization indices to keep. Can be None (to keep everything).
         history_update_string : str
             string to append to the end of the history.
+
+
         """
         # build up history string as we go
         history_update_string = '  Downselected to specific '
@@ -2109,7 +2127,7 @@ class UVData(UVBase):
     def _select_metadata(self, blt_inds, freq_inds, pol_inds, history_update_string,
                          keep_all_metadata=True):
         """
-        Internal function to perform select on everything except the data-sized arrays.
+        Perform select on everything except the data-sized arrays.
 
         Parameters
         ----------
@@ -2123,6 +2141,7 @@ class UVData(UVBase):
             string to append to the end of the history.
         keep_all_metadata : bool
             Option to keep metadata for antennas that are no longer in the dataset.
+
         """
         if blt_inds is not None:
             self.Nblts = len(blt_inds)
@@ -2250,6 +2269,7 @@ class UVData(UVBase):
         ------
         ValueError
             If any of the parameters are set to inappropriate values.
+
         """
         if metadata_only is True and (self.data_array is not None
                                       or self.flag_array is not None
@@ -2301,7 +2321,7 @@ class UVData(UVBase):
 
     def _convert_from_filetype(self, other):
         """
-        Internal function to convert from a file-type specific object to a UVData object.
+        Convert from a file-type specific object to a UVData object.
 
         Used in reads.
 
@@ -2309,6 +2329,7 @@ class UVData(UVBase):
         ----------
         other : object that inherits from UVData
             File type specific object to convert to UVData
+
         """
         for p in other:
             param = getattr(other, p)
@@ -2316,7 +2337,7 @@ class UVData(UVBase):
 
     def _convert_to_filetype(self, filetype):
         """
-        Internal function to convert from a UVData object to a file-type specific object.
+        Convert from a UVData object to a file-type specific object.
 
         Used in writes.
 
@@ -2330,6 +2351,7 @@ class UVData(UVBase):
         ------
         ValueError
             if filetype is not a known type
+
         """
         if filetype is 'uvfits':
             from . import uvfits
@@ -2441,6 +2463,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters after
             reading in the file (the default is True, meaning the acceptable
             range check will be done). Ignored if read_data is False.
+
         """
         from . import uvfits
         # work out what function should be called depending on what's
@@ -2573,6 +2596,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters before
             writing the file (the default is True, meaning the acceptable
             range check will be done).
+
         """
         uvfits_obj = self._convert_to_filetype('uvfits')
         uvfits_obj.write_uvfits(filename, spoof_nonessential=spoof_nonessential,
@@ -2584,7 +2608,7 @@ class UVData(UVBase):
     def read_ms(self, filepath, axis=None, data_column='DATA', pol_order='AIPS',
                 run_check=True, check_extra=True, run_check_acceptability=True):
         """
-        Read in data from a measurement set
+        Read in data from a measurement set.
 
         Parameters
         ----------
@@ -2613,6 +2637,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters after
             reading in the file (the default is True, meaning the acceptable
             range check will be done).
+
         """
         from . import ms
 
@@ -2675,6 +2700,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters after
             reading in the file (the default is True, meaning the acceptable
             range check will be done).
+
         """
         from . import fhd
         if isinstance(filelist[0], (list, tuple)):
@@ -2771,6 +2797,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters after
             reading in the file (the default is True, meaning the acceptable
             range check will be done). Ignored if read_data is False.
+
         """
         from . import miriad
         if isinstance(filepath, (list, tuple)):
@@ -2845,6 +2872,7 @@ class UVData(UVBase):
         no_antnums : bool
             Option to not write the antnums variable to the file.
             Should only be used for testing purposes.
+
         """
         miriad_obj = self._convert_to_filetype('miriad')
         miriad_obj.write_miriad(filepath, run_check=run_check, check_extra=check_extra,
@@ -2943,6 +2971,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters after
             reading in the file (the default is True, meaning the acceptable
             range check will be done). Ignored if read_data is False.
+
         """
         from . import uvh5
         if isinstance(filename, (list, tuple)):
@@ -3029,6 +3058,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters before
             writing the file (the default is True, meaning the acceptable
             range check will be done).
+
         """
         uvh5_obj = self._convert_to_filetype('uvh5')
         uvh5_obj.write_uvh5(filename, run_check=run_check,
@@ -3073,6 +3103,7 @@ class UVData(UVBase):
         file on disk. The data is then actually written by calling the write_uvh5_part method,
         with the same filename as the one specified in this function. See the tutorial for a
         worked example.
+
         """
         uvh5_obj = self._convert_to_filetype('uvh5')
         uvh5_obj.initialize_uvh5_file(filename, clobber=clobber,
@@ -3157,6 +3188,7 @@ class UVData(UVBase):
             range check will be done).
         add_to_history : str
             String to append to history before write out. Default is no appending.
+
         """
         uvh5_obj = self._convert_to_filetype('uvh5')
         uvh5_obj.write_uvh5_part(filename, data_array, flags_array, nsample_array,
@@ -3301,6 +3333,7 @@ class UVData(UVBase):
             Option to check acceptable range of the values of parameters after
             reading in the file (the default is True, meaning the acceptable
             range check will be done). Ignored if read_data is False.
+
         """
         if isinstance(filename, (list, tuple)):
             # this is either a list of separate files to read or a list of FHD files
@@ -3501,12 +3534,13 @@ class UVData(UVBase):
         -------
         ndarray of int
             Array of unique antennas with data associated with them.
+
         """
         return np.unique(np.append(self.ant_1_array, self.ant_2_array))
 
     def get_ENU_antpos(self, center=None, pick_data_ants=False):
         """
-        Returns antenna positions in ENU (topocentric) coordinates in units of meters.
+        Get antenna positions in ENU (topocentric) coordinates in units of meters.
 
         Parameters
         ----------
@@ -3521,6 +3555,7 @@ class UVData(UVBase):
             Antenna positions in ENU (topocentric) coordinates in units of meters, shape=(Nants, 3)
         ants : ndarray
             Antenna numbers matching ordering of antpos, shape=(Nants,)
+
         """
         if center is None:
             center = False
@@ -3554,6 +3589,7 @@ class UVData(UVBase):
         -------
         ndarray of int
             Array of unique baselines with data associated with them.
+
         """
         return np.unique(self.baseline_array)
 
@@ -3565,6 +3601,7 @@ class UVData(UVBase):
         -------
         list of tuples of int
             list of unique antpair tuples (ant1, ant2) with data associated with them.
+
         """
         return [self.baseline_to_antnums(bl) for bl in self.get_baseline_nums()]
 
@@ -3576,6 +3613,7 @@ class UVData(UVBase):
         -------
         list of str
             list of polarizations (as strings) in the data.
+
         """
         return uvutils.polnum2str(self.polarization_array, x_orientation=self.x_orientation)
 
@@ -3587,6 +3625,7 @@ class UVData(UVBase):
         -------
         list of tuples of int
             list of unique antpair + pol tuples (ant1, ant2, pol) with data associated with them.
+
         """
         bli = 0
         pols = self.get_pols()
@@ -3606,6 +3645,7 @@ class UVData(UVBase):
         ------
         ValueError
             If any pseudo-Stokes visibilities are present
+
         """
         if np.any(self.polarization_array > 0):
             raise ValueError('Pseudo-Stokes visibilities cannot be interpreted as feed polarizations')
@@ -3631,6 +3671,7 @@ class UVData(UVBase):
         -------
         inds : ndarray of int-64
             indices of the antpair along the baseline-time axis.
+
         """
         # check for expanded antpair or key
         if ant2 is None:
@@ -3693,6 +3734,7 @@ class UVData(UVBase):
             complete conjugation mapping.
         pol_ind : tuple of ndarray of int
             polarization indices for blt_ind1 and blt_ind2
+
         """
         key = uvutils._get_iterable(key)
         if type(key) is str:
@@ -3813,7 +3855,7 @@ class UVData(UVBase):
     def _smart_slicing(self, data, ind1, ind2, indp, squeeze='default',
                        force_copy=False):
         """
-        Method to quickly get the relevant section of a data-like array.
+        Quickly get the relevant section of a data-like array.
 
         Used in get_data, get_flags and get_nsamples.
 
@@ -3839,6 +3881,7 @@ class UVData(UVBase):
         -------
         ndarray
             copy (or if possible, a read-only view) of relevant section of data
+
         """
         p_reg_spaced = [False, False]
         p_start = [0, 0]
@@ -3961,6 +4004,7 @@ class UVData(UVBase):
             copy (or if possible, a read-only view) of relevant section of data.
             If data exists conjugate to requested antenna pair, it will be conjugated
             before returning.
+
         """
         key = []
         for val in [key1, key2, key3]:
@@ -4011,6 +4055,7 @@ class UVData(UVBase):
         -------
         ndarray
             copy (or if possible, a read-only view) of relevant section of flags.
+
         """
         key = []
         for val in [key1, key2, key3]:
@@ -4061,6 +4106,7 @@ class UVData(UVBase):
         -------
         ndarray
             copy (or if possible, a read-only view) of relevant section of nsample_array.
+
         """
         key = []
         for val in [key1, key2, key3]:
@@ -4104,6 +4150,7 @@ class UVData(UVBase):
         -------
         ndarray
             times from the time_array for the given antpair or baseline.
+
         """
         key = []
         for val in [key1, key2, key3]:
@@ -4118,7 +4165,7 @@ class UVData(UVBase):
 
     def antpairpol_iter(self, squeeze='default'):
         """
-        Iterator to get the data for each antpair, polarization combination.
+        Iterate through the data for each antpair, polarization combination.
 
         Parameters
         ----------
@@ -4134,6 +4181,7 @@ class UVData(UVBase):
             antenna1, antenna2, and polarization string
         data : ndarray of complex
             data for the ant pair and polarization specified in key
+
         """
         antpairpols = self.get_antpairpols()
         for key in antpairpols:
@@ -4170,8 +4218,8 @@ class UVData(UVBase):
         polarizations : list of int or None
             List of desired polarizations or None if ant_str does not contain a
             polarization specification.
-        """
 
+        """
         ant_re = r'(\(((-?\d+[lrxy]?,?)+)\)|-?\d+[lrxy]?)'
         bl_re = '(^(%s_%s|%s),?)' % (ant_re, ant_re, ant_re)
         str_pos = 0
@@ -4372,6 +4420,7 @@ class UVData(UVBase):
         ----------
         int_time : int
             integration time in seconds to be assigned to all samples in the data.
+
         """
         # The time_array is in units of days, and integration_time has units of
         # seconds, so we need to convert.
@@ -4410,6 +4459,8 @@ class UVData(UVBase):
         part of the uv plane. In order for the returned baseline numbers to match
         baselines in this object, this method will conjugate baselines on this
         object to the 'u>0' convention unless `no_conjugate` is set to True.
+
+
         """
         if conjugate_bls:
             self.conjugate_bls(convention='u>0')
@@ -4436,6 +4487,7 @@ class UVData(UVBase):
             List of redundant group baseline lengths in meters
         baseline_ind_conj : list of int
             List of baselines that are redundant when reversed.
+
         """
         _, unique_inds = np.unique(self.baseline_array, return_index=True)
         unique_inds.sort()
@@ -4470,8 +4522,8 @@ class UVData(UVBase):
         -------
         UVData object or None
             if inplace is False, return the compressed UVData object
-        """
 
+        """
         red_gps, centers, lengths, conjugates = self.get_baseline_redundancies(tol)
 
         bl_ants = [self.baseline_to_antnums(gp[0]) for gp in red_gps]
@@ -4493,8 +4545,8 @@ class UVData(UVBase):
             string specifying primary order along the blt axis (see `reorder_blts`)
         blt_minor_order : str
             string specifying minor order along the blt axis (see `reorder_blts`)
-        """
 
+        """
         red_gps, centers, lengths = self.get_antenna_redundancies(tol=tol,
                                                                   conjugate_bls=True)
 
