@@ -2938,7 +2938,7 @@ class UVData(UVBase):
                                 clobber=clobber, no_antnums=no_antnums)
         del(miriad_obj)
 
-    def read_mwa_corr_fits(self, filepath, axis=None, use_cotter_flags=False,
+    def read_mwa_corr_fits(self, filelist, axis=None, use_cotter_flags=False,
                            run_check=True, check_extra=True,
                            run_check_acceptability=True):
         """
@@ -2946,7 +2946,7 @@ class UVData(UVBase):
 
         Parameters
         ----------
-        filepath : str or list of str
+        filepath : list of str or list of lists of str
             The measurement set file directory or list of directories to read from.
         axis : str
             Axis to concatenate files along. This enables fast concatenation
@@ -2972,12 +2972,12 @@ class UVData(UVBase):
         """
 
         from . import mwa_corr_fits
-        if isinstance(filepath, (list, tuple)):
-            self.read_mwa_corr_fits(filepath[0], use_cotter_flags=use_cotter_flags,
+        if isinstance(filelist[0], (list, tuple)):
+            self.read_mwa_corr_fits(filelist[0], use_cotter_flags=use_cotter_flags,
                                     run_check=run_check, check_extra=check_extra,
                                     run_check_acceptability=run_check_acceptability)
-            if len(filepath) > 1:
-                for f in filepath[1:]:
+            if len(filelist) > 1:
+                for f in filelist[1:]:
                     uv2 = UVData()
                     uv2.read_mwa_corr_fits(f, use_cotter_flags=use_cotter_flags,
                                            run_check=run_check, check_extra=check_extra,
@@ -2992,7 +2992,7 @@ class UVData(UVBase):
                 del(uv2)
         else:
             corr_obj = mwa_corr_fits.MWACorrFITS()
-            corr_obj.read_mwa_corr_fits(filepath, use_cotter_flags=use_cotter_flags,
+            corr_obj.read_mwa_corr_fits(filelist, use_cotter_flags=use_cotter_flags,
                                         run_check=run_check, check_extra=check_extra,
                                         run_check_acceptability=run_check_acceptability)
             self._convert_from_filetype(corr_obj)
