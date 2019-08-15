@@ -1015,7 +1015,7 @@ class UVData(UVBase):
         zenith_dec = obs_zenith_coord.dec
 
         self.phase(zenith_ra, zenith_dec, epoch='J2000', phase_frame=phase_frame,
-                   use_ant_pos=use_ant_pos, metadata_only=metadata_only)
+                   use_ant_pos=use_ant_pos)
 
     def set_uvws_from_antenna_positions(self, allow_phasing=False,
                                         orig_phase_frame=None,
@@ -1063,8 +1063,7 @@ class UVData(UVBase):
                 phase_center_ra = self.phase_center_ra
                 phase_center_dec = self.phase_center_dec
                 phase_center_epoch = self.phase_center_epoch
-                self.unphase_to_drift(phase_frame=orig_phase_frame,
-                                      metadata_only=metadata_only)
+                self.unphase_to_drift(phase_frame=orig_phase_frame)
             else:
                 raise ValueError('UVW calculation requires unphased data. '
                                  'Use unphase_to_drift or set '
@@ -1085,7 +1084,7 @@ class UVData(UVBase):
         self.uvw_array = uvw_array
         if phase_type == 'phased':
             self.phase(phase_center_ra, phase_center_dec, phase_center_epoch,
-                       phase_frame=output_phase_frame, metadata_only=metadata_only)
+                       phase_frame=output_phase_frame)
 
     def conjugate_bls(self, convention='ant1<ant2', use_enu=True, uvw_tol=0.0):
         """
