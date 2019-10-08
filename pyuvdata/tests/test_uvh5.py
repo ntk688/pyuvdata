@@ -185,7 +185,9 @@ def test_UVH5ReadMultiple_files():
     uv2.select(freq_chans=np.arange(32, 64))
     uv1.write_uvh5(testfile1, clobber=True)
     uv2.write_uvh5(testfile2, clobber=True)
-    uvtest.checkWarnings(uv1.read, [[testfile1, testfile2]], nwarnings=2,
+    uvtest.checkWarnings(uv1.read_uvh5,
+                         func_args=[np.array([testfile1, testfile2])],
+                         nwarnings=2,
                          message='Telescope EVLA is not')
     # Check history is correct, before replacing and doing a full object check
     assert uvutils._check_histories(uv_full.history + '  Downselected to '
