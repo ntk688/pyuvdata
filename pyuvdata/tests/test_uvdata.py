@@ -571,9 +571,9 @@ def test_unphase_drift_data_error(uv_phase_and_raw):
     "phase_func,phase_kwargs,err_msg",
     [("unphase_to_drift", {},
       "The phasing type of the data is unknown. Set the phase_type"),
-     ("phase", {"ra": 0, "dec": 0, "epoch": "J2000"},
+     ("phase", {"ra": 0, "dec": 0, "epoch": "J2000", "allow_rephase": False},
       "The phasing type of the data is unknown. Set the phase_type"),
-     ("phase_to_time", {"time": 0},
+     ("phase_to_time", {"time": 0, "allow_rephase": False},
       "The phasing type of the data is unknown. Set the phase_type")
      ]
 )
@@ -586,8 +586,9 @@ def test_unknown_phase_unphaseHERA_errors(
     UV_raw.set_unknown_phase_type()
     # if this is phase_to_time, use this index set in the dictionary and
     # assign the value of the time_array associated with that index
-    # this is a little hacky, but we cannot acces UV_raw.time_array in the parametrize
-    if phase_func == "phsae_to_time":
+    # this is a little hacky, but we cannot acces UV_raw.time_array in the
+    # parametrize
+    if phase_func == "phase_to_time":
         phase_kwargs["time"] = UV_raw.time_array[phase_kwargs["time"]]
 
     with pytest.raises(ValueError) as cm:
@@ -612,8 +613,9 @@ def test_phase_rephaseHERA_errors(
     UV_raw.phase(0., 0., epoch="J2000")
     # if this is phase_to_time, use this index set in the dictionary and
     # assign the value of the time_array associated with that index
-    # this is a little hacky, but we cannot acces UV_raw.time_array in the parametrize
-    if phase_func == "phsae_to_time":
+    # this is a little hacky, but we cannot acces UV_raw.time_array in the
+    # parametrize
+    if phase_func == "phase_to_time":
         phase_kwargs["time"] = UV_raw.time_array[phase_kwargs["time"]]
 
     with pytest.raises(ValueError) as cm:
