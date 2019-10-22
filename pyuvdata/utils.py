@@ -1418,7 +1418,8 @@ def collapse(arr, alg, weights=None, axis=None, return_weights=False):
     return out
 
 
-def mean_collapse(arr, weights=None, axis=None, return_weights=False):
+def mean_collapse(arr, weights=None, axis=None, return_weights=False,
+                  return_weights_square=False):
     ''' Function to average data. This is similar to np.average, except it
     handles infs (by giving them zero weight) and zero weight axes (by forcing
     result to be inf with zero output weight).
@@ -1428,6 +1429,7 @@ def mean_collapse(arr, weights=None, axis=None, return_weights=False):
                   all non-infinite data.
         axis - axis keyword to pass to np.sum
         return_weights - whether to return sum of weights. Default is False.
+        return_weights_square - whether to return the sum of the square of the weights. Default is False.
     '''
     arr = copy.deepcopy(arr)  # avoid changing outside
     if weights is None:
@@ -1435,14 +1437,20 @@ def mean_collapse(arr, weights=None, axis=None, return_weights=False):
     else:
         weights = copy.deepcopy(weights)
     weights = weights * np.logical_not(np.isinf(arr))
+    weights_square = weights**2
     arr[np.isinf(arr)] = 0
     weight_out = np.sum(weights, axis=axis)
+    weights_square_out = np.sum(weights_square, axis=axis)
     out = np.sum(weights * arr, axis=axis)
     where = (weight_out > 1e-10)
     out = np.true_divide(out, weight_out, where=where)
     out = np.where(where, out, np.inf)
-    if return_weights:
+    if (return_weights and return_weights_square):
+        return out, weight_out, weights_square_out
+    elif return_weights:
         return out, weight_out
+    elif return_weights_square:
+        return out, weights_square_out
     else:
         return out
 
