@@ -1396,7 +1396,8 @@ def _reraise_context(fmt, *args):
     raise
 
 
-def collapse(arr, alg, weights=None, axis=None, return_weights=False):
+def collapse(arr, alg, weights=None, axis=None, return_weights=False,
+             return_weights_square=False):
     ''' Parent function to collapse an array with a given algorithm.
     Args:
         arr (array): Input array to process.
@@ -1406,12 +1407,14 @@ def collapse(arr, alg, weights=None, axis=None, return_weights=False):
             NOTE: Some subfunctions do not use the weights. See corresponding doc strings.
         axis (int, tuple, optional): Axis or axes to collapse. Default is all.
         return_weights (Bool): Whether to return sum of weights. Default is False.
+        return_weights_square (Bool): Whether to return the sum of the squares of the weights. Default is False.
     '''
     collapse_dict = {'mean': mean_collapse, 'absmean': absmean_collapse,
                      'quadmean': quadmean_collapse, 'or': or_collapse,
                      'and': and_collapse}
     try:
-        out = collapse_dict[alg](arr, weights=weights, axis=axis, return_weights=return_weights)
+        out = collapse_dict[alg](arr, weights=weights, axis=axis, return_weights=return_weights,
+                                 return_weights_square=return_weights_square)
     except KeyError:
         raise ValueError('Collapse algorithm must be one of: '
                          + ', '.join(collapse_dict.keys()) + '.')
@@ -1429,7 +1432,7 @@ def mean_collapse(arr, weights=None, axis=None, return_weights=False,
                   all non-infinite data.
         axis - axis keyword to pass to np.sum
         return_weights - whether to return sum of weights. Default is False.
-        return_weights_square - whether to return the sum of the square of the weights. Default is False.
+        return_weights_square - whether to return the sum of the squares of the weights. Default is False.
     '''
     arr = copy.deepcopy(arr)  # avoid changing outside
     if weights is None:
@@ -1456,26 +1459,32 @@ def mean_collapse(arr, weights=None, axis=None, return_weights=False,
         return out
 
 
-def absmean_collapse(arr, weights=None, axis=None, return_weights=False):
+def absmean_collapse(arr, weights=None, axis=None, return_weights=False,
+                     return_weights_square=False):
     ''' Function to average absolute value
     Args:
         arr - array to process
         weights - weights for average
         axis - axis keyword to pass to np.mean
         return_weights - whether to return sum of weights. Default is False.
+        return_weights_square - whether to return the sum of the squares of the weights. Default is False.
     '''
-    return mean_collapse(np.abs(arr), weights=weights, axis=axis, return_weights=return_weights)
+    return mean_collapse(np.abs(arr), weights=weights, axis=axis,
+                         return_weights=return_weights, return_weights_square=return_weights_square)
 
 
-def quadmean_collapse(arr, weights=None, axis=None, return_weights=False):
+def quadmean_collapse(arr, weights=None, axis=None, return_weights=False,
+                      return_weights_square=False):
     ''' Function to average in quadrature
     Args:
         arr - array to process
         weights - weights for average
         axis - axis keyword to pass to np.mean
         return_weights - whether to return sum of weights. Default is False.
+        return_weights_square - whether to return the sum of the squares of the weights. Default is False.
     '''
-    out = mean_collapse(np.abs(arr)**2, weights=weights, axis=axis, return_weights=return_weights)
+    out = mean_collapse(np.abs(arr)**2, weights=weights, axis=axis, return_weights=return_weights,
+                        return_weights_square=return_weights_square)
     if return_weights:
         return np.sqrt(out[0]), out[1]
     else:
